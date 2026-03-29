@@ -1,0 +1,38 @@
+# Data (too large for git)
+data/UrbanSound8K/
+data/cafe_recordings/
+data/*.csv
+data/*.json
+
+# Model outputs
+outputs/
+models/
+*.pkl
+*.joblib
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+wandb/
+*.log
