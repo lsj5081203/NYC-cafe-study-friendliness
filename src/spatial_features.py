@@ -42,7 +42,9 @@ def download_wifi_hotspots(cache_path=None, limit=5000):
     df = df.dropna(subset=["latitude", "longitude"])
 
     if cache_path:
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        dir_name = os.path.dirname(cache_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
         df.to_csv(cache_path, index=False)
         print(f"  Cached to {cache_path}")
 
@@ -74,7 +76,9 @@ def download_eateries(cache_path=None, limit=10000):
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     if cache_path:
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        dir_name = os.path.dirname(cache_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
         df.to_csv(cache_path, index=False)
         print(f"  Cached to {cache_path}")
 

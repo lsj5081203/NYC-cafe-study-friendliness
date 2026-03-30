@@ -63,7 +63,7 @@ def compute_study_friendliness(
     eatery_count,
     wifi_weight=0.1,
     eatery_weight=-0.05,
-    acoustic_weight=0.85,
+    acoustic_weight=0.9,
 ):
     """Combine acoustic and spatial features into a final study-friendliness score.
 
