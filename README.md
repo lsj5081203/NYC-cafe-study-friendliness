@@ -1,48 +1,94 @@
-# ML Class Project Template
+# Silence in the City: NYC Cafe Study-Friendliness from Sound
 
-This repo is set up as a class project template derived from a research project codebase. It keeps a realistic structure (data, scripts, configs, training code) while adding guidance for scoping, experimentation, and reporting.
+**ML Class Project — Jun Lee**
 
-If you want to refer to the `README` in the original codebase, see `docs/README_NEDS.md`.
+Using machine learning to estimate how "study-friendly" a cafe environment is in New York City, based on the quality of sound — not just loudness.
 
-## Fork This Repo
+## Overview
 
-1. Click the **Fork** button on GitHub to create your own copy.
-2. Clone your fork locally:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/ml-class-project-template.git
-   cd ml-class-project-template
-   ```
-3. Rename the repo on GitHub to match your project.
+This project trains an urban sound event classifier on [UrbanSound8K](https://urbansounddataset.weebly.com/urbansound8k.html), then applies it to field recordings from NYC cafes to detect distractive sound events (sirens, drilling, jackhammers, etc.). Audio predictions are combined with spatial context from [NYC Open Data](https://opendata.cityofnewyork.us/) (Wi-Fi hotspot density, nearby business counts) to produce a study-friendliness score for each location.
+
+**Deliverables:**
+- A map of NYC with predicted study-friendliness scores for recorded cafe locations
+- Acoustic outlier analysis: locations that are unexpectedly quiet or noisy
+
+## Models
+
+| Model | Features | Status |
+|-------|----------|--------|
+| **Baseline**: SVM / Random Forest | MFCC (40 coefficients + deltas) | Implemented |
+| **Proposed**: CNN | Mel-spectrograms + spatial context | Planned |
 
 ## Quick Start
 
-1. Read the project brief and fill in your scope: `docs/PROJECT_TEMPLATE.md`.
-2. Set up the environment. **Replace the environment name and Python package dependencies with your own.**
-   ```bash
-   conda env create -f env.yaml
-   conda activate YOUR_ENV_NAME
-   ```
+### 1. Set up environment
 
-## Recommended Repo Layout
+```bash
+conda env create -f env.yaml
+conda activate cafe-study
+```
 
-Use the existing folder structure, but **replace it with your own files**:
+### 2. Download data
 
-- `src/`: core model, training, evaluation, and utilities.
-- `script/`: run scripts that record exact command-line commands when running on a cluster.
-- `data/`: small metadata files or pointers to datasets.
-- `assets/`: figures for the final report.
-- `docs/`: project brief, milestones, and writeups.
+Download UrbanSound8K from https://urbansounddataset.weebly.com/urbansound8k.html and extract to `data/UrbanSound8K/`. See `data/README.md` for details.
 
-## What Students Must Deliver
+### 3. Explore the data
 
-- A clearly scoped research question and hypothesis.
-- A model implementation, with corresponding training and evaluation code.
-- A reproducible experiment log with metrics and plots.
-- **A final project report hosted using GitHub Pages** (see `docs/README_NEDS.md` for an example of the hosted project page.)
+```bash
+jupyter notebook notebooks/01_data_exploration.ipynb
+```
 
-## Instructor Notes
+### 4. Train baseline model
 
-- The training/eval scripts in the original codebase are intact for your reference.
-- Suggested workflows are outlined in `docs/PROJECT_TEMPLATE.md`.
+```bash
+jupyter notebook notebooks/02_baseline_model.ipynb
+```
 
+Or from Python:
 
+```python
+from src.baseline_model import run_single_split
+model, results = run_single_split("data/UrbanSound8K", model_type="rf")
+```
+
+## Project Structure
+
+```
+├── README.md                         # This file
+├── env.yaml                          # Conda environment
+├── .gitignore
+├── docs/
+│   ├── PROJECT_TEMPLATE.md           # Project scope and plan
+│   └── blog.md                       # Technical blog post
+├── data/
+│   └── README.md                     # Dataset download instructions
+├── notebooks/
+│   ├── 01_data_exploration.ipynb     # UrbanSound8K exploration
+│   └── 02_baseline_model.ipynb       # MFCC + SVM/RF baseline
+├── src/
+│   ├── audio_features.py             # MFCC & mel-spectrogram extraction
+│   ├── dataset.py                    # UrbanSound8K data loading
+│   ├── baseline_model.py             # SVM/RF training & evaluation
+│   ├── spatial_features.py           # NYC Open Data + geographic joins
+│   ├── scoring.py                    # Study-friendliness scoring
+│   └── utils/
+│       └── config_utils.py           # Configuration utilities
+├── scripts/
+│   └── download_data.sh              # Data download helper
+└── assets/                           # Figures for report
+```
+
+## Datasets
+
+| Dataset | Source | Purpose |
+|---------|--------|---------|
+| UrbanSound8K | [Link](https://urbansounddataset.weebly.com/urbansound8k.html) | Training sound classifier |
+| NYC Wi-Fi Hotspots | [NYC Open Data](https://data.cityofnewyork.us/City-Government/NYC-Wi-Fi-Hotspot-Locations/yjub-udmw) | Spatial context feature |
+| Directory of Eateries | [NYC Open Data](https://data.cityofnewyork.us/Recreation/Directory-of-Eateries/8792-ebcp) | Spatial context feature |
+| Cafe recordings | Self-collected | Inference targets |
+
+## References
+
+1. Salamon, J., Jacoby, C., & Bello, J. P. (2014). A Dataset and Taxonomy for Urban Sound Research. *ACM MM 2014*.
+2. Piczak, K. J. (2015). Environmental Sound Classification with Convolutional Neural Networks. *IEEE MLSP*.
+3. Salamon, J., & Bello, J. P. (2017). Deep Convolutional Neural Networks and Data Augmentation for Environmental Sound Classification. *IEEE SPL*.
