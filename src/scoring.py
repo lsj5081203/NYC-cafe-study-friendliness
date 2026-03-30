@@ -11,12 +11,12 @@ import numpy as np
 
 # Distraction weights for each UrbanSound8K class (0 = not distracting, 1 = very distracting)
 DISTRACTION_WEIGHTS = {
-    0: 0.2,   # air_conditioner — low hum, mildly distracting
+    0: 0.1,   # air_conditioner — steady hum, barely noticeable
     1: 0.9,   # car_horn — sudden, very distracting
     2: 0.5,   # children_playing — moderate
     3: 0.6,   # dog_bark — sudden, moderately distracting
     4: 0.95,  # drilling — loud, sustained, very distracting
-    5: 0.3,   # engine_idling — low, sustained
+    5: 0.15,  # engine_idling — steady low rumble
     6: 1.0,   # gun_shot — extremely distracting
     7: 0.95,  # jackhammer — loud, sustained, very distracting
     8: 0.85,  # siren — loud, attention-grabbing
@@ -103,11 +103,11 @@ def classify_score(score):
     Returns:
         String label.
     """
-    if score >= 80:
+    if score >= 75:
         return "Excellent"
-    elif score >= 60:
+    elif score >= 55:
         return "Good"
-    elif score >= 40:
+    elif score >= 35:
         return "Fair"
     elif score >= 20:
         return "Poor"
