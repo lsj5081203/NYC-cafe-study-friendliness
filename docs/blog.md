@@ -29,6 +29,16 @@ Early approaches to classifying these sounds used hand-crafted features like **M
 
 More recent work by Piczak (2015) and Salamon & Bello (2017) showed that **Convolutional Neural Networks (CNNs)** operating on mel-spectrograms can significantly outperform these baselines, achieving accuracies above 79% on UrbanSound8K. The key insight is that mel-spectrograms are essentially images of sound, and CNNs excel at learning visual patterns — in this case, spectro-temporal patterns that distinguish a siren's sweeping frequency from the broadband noise of a jackhammer.
 
+### Complementary Data: SONYC-UST-V2
+
+While UrbanSound8K provides a clean, well-labeled benchmark, it was curated from Freesound uploads rather than recorded in situ. To complement it, we also incorporate **SONYC-UST-V2** (Cartwright et al., 2020) — a dataset of 18,510 audio recordings captured by acoustic sensors deployed across New York City as part of the Sounds of New York City (SONYC) project. Each recording comes with block-level latitude/longitude and multilabel annotations across 23 fine-grained urban sound classes (e.g., small-engine, jackhammer, non-machinery-impact). This dataset grounds our work in real NYC acoustics and provides a bridge between the controlled UrbanSound8K benchmark and our own field recordings.
+
+### Data Collection: NYC Cafe Recordings
+
+To build a study-friendliness map, we collected our own field recordings from **7 NYC cafes** across Greenwich Village, West Village, and Long Island City. Cafes were selected based on two criteria: (1) sufficient seating for studying and (2) a 4+ star rating on Google Maps.
+
+At each cafe, we recorded approximately **2 minutes of audio both inside and outside** the location using a smartphone, yielding **14 total recordings**. The inside recording captures the cafe's indoor ambiance (conversations, music, espresso machines), while the outside recording captures the surrounding street-level soundscape (traffic, construction, pedestrians). This inside/outside approach lets us assess not just what you hear while seated, but also what acoustic environment greets you at the door — a factor that influences perceived noise even indoors.
+
 ### From Sound Classification to Study-Friendliness
 
 This project bridges the gap between academic sound classification research and a practical urban application. The idea is straightforward:
@@ -51,3 +61,4 @@ Beyond the practical application, this project explores an interesting ML proble
 1. Salamon, J., Jacoby, C., & Bello, J. P. (2014). A Dataset and Taxonomy for Urban Sound Research. *Proceedings of the 22nd ACM International Conference on Multimedia*.
 2. Piczak, K. J. (2015). Environmental Sound Classification with Convolutional Neural Networks. *IEEE International Workshop on Machine Learning for Signal Processing*.
 3. Salamon, J., & Bello, J. P. (2017). Deep Convolutional Neural Networks and Data Augmentation for Environmental Sound Classification. *IEEE Signal Processing Letters*, 24(3), 279-283.
+4. Cartwright, M., et al. (2020). SONYC Urban Sound Tagging (SONYC-UST): A Multilabel Dataset from an Urban Acoustic Sensor Network. *Proceedings of the Detection and Classification of Acoustic Scenes and Events Workshop (DCASE)*.

@@ -19,15 +19,17 @@
 
 - **Dataset(s)**:
   - **UrbanSound8K**: 8,732 labeled urban sound clips (<=4s), 10 classes. Used for training/benchmarking.
+  - **SONYC-UST-V2**: 18,510 real-world NYC urban sound recordings with block-level geolocation and 23 fine-grained sound classes. Used as complementary NYC-specific audio data. License: CC BY 4.0.
   - **NYC Wi-Fi Hotspot Locations**: ~3,000 public Wi-Fi hotspots from NYC Open Data.
   - **Directory of Eateries**: Restaurant/bar/food locations from NYC Open Data.
-  - **Field recordings**: Self-collected 30-60s ambient audio clips from ~10-15 NYC cafe locations.
+  - **Field recordings**: Self-collected ~2-minute ambient audio clips from 7 NYC cafes (14 total recordings: inside + outside per cafe). Selection criteria: sufficient seating for studying and 4+ star rating on Google Maps. Format: .m4a recorded via smartphone.
 - **How to access**:
   - UrbanSound8K: https://urbansounddataset.weebly.com/urbansound8k.html (requires agreement to terms)
   - Wi-Fi hotspots: https://data.cityofnewyork.us/City-Government/NYC-Wi-Fi-Hotspot-Locations/yjub-udmw
   - Eateries: https://data.cityofnewyork.us/Recreation/Directory-of-Eateries/8792-ebcp
+  - SONYC-UST-V2: https://zenodo.org/records/3966543
   - See `data/README.md` for download instructions.
-- **License/ethics**: UrbanSound8K is CC BY-NC 4.0. NYC Open Data is public domain. Field recordings capture ambient sound only (no identifiable speech).
+- **License/ethics**: UrbanSound8K is CC BY-NC 4.0. SONYC-UST-V2 is CC BY 4.0. NYC Open Data is public domain. Field recordings capture ambient sound only (no identifiable speech).
 - **Train/val/test split**: UrbanSound8K uses predefined 10-fold CV. For prototype: folds 1-8 train, fold 9 val, fold 10 test. Full evaluation uses 10-fold CV.
 
 ## 4) Baseline
