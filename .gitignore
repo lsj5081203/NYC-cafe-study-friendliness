@@ -1,6 +1,7 @@
 # Data (too large for git)
 data/UrbanSound8K/
-data/cafe_recordings/
+data/SONYC-UST-V2/
+data/cafe_recordings/*
 !data/cafe_recordings/cafe_metadata.csv
 data/*.csv
 data/*.json

@@ -102,7 +102,7 @@ Place your cafe recordings in `data/cafe_recordings/`.
 | Cafe | Neighborhood | Lat | Lon |
 |------|-------------|-----|-----|
 | Blank Street Cafe | Greenwich Village | 40.7353 | -73.9984 |
-| Jack & Co | Long Island City | 40.7489 | -73.9410 |
+| Jacx & Co Food Hall | Long Island City | 40.7489 | -73.9410 |
 | Joe Coffee | West Village | 40.7333 | -74.0006 |
 | Paris Baguette | Long Island City | 40.7481 | -73.9402 |
 | Rosecrans Cafe | West Village | 40.7339 | -74.0009 |
