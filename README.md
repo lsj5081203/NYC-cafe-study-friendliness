@@ -70,9 +70,10 @@ model, results = run_single_split("data/UrbanSound8K", model_type="rf")
 │   ├── dataset.py                    # UrbanSound8K data loading
 │   ├── baseline_model.py             # SVM/RF training & evaluation
 │   ├── spatial_features.py           # NYC Open Data + geographic joins
-│   ├── scoring.py                    # Study-friendliness scoring
-│   └── utils/
-│       └── config_utils.py           # Configuration utilities
+│   └── scoring.py                    # Study-friendliness scoring
+├── tests/
+│   ├── test_scoring.py               # Scoring unit tests
+│   └── test_audio_features.py        # Audio feature extraction tests
 ├── scripts/
 │   └── download_data.sh              # Data download helper
 └── assets/                           # Figures for report
@@ -81,8 +82,9 @@ model, results = run_single_split("data/UrbanSound8K", model_type="rf")
 ## Datasets
 
 | Dataset | Source | Purpose |
-|---------|--------|---------|
+|---------|--------|----------|
 | UrbanSound8K | [Link](https://urbansounddataset.weebly.com/urbansound8k.html) | Training sound classifier |
+| SONYC-UST-V2 | [Zenodo](https://zenodo.org/records/3966543) | NYC urban sound recordings with geolocation |
 | NYC Wi-Fi Hotspots | [NYC Open Data](https://data.cityofnewyork.us/City-Government/NYC-Wi-Fi-Hotspot-Locations/yjub-udmw) | Spatial context feature |
 | Directory of Eateries | [NYC Open Data](https://data.cityofnewyork.us/Recreation/Directory-of-Eateries/8792-ebcp) | Spatial context feature |
 | Cafe recordings | Self-collected | Inference targets |
