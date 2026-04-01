@@ -12,11 +12,22 @@ This project trains an urban sound event classifier on [UrbanSound8K](https://ur
 - A map of NYC with predicted study-friendliness scores for recorded cafe locations
 - Acoustic outlier analysis: locations that are unexpectedly quiet or noisy
 
+## Current Status
+
+> **Pipeline code is complete. Awaiting dataset download and first training run.**
+>
+> - [x] Source code implemented (`src/`)
+> - [x] Notebooks ready (`notebooks/`)
+> - [x] 7 NYC cafe field recordings collected (`data/cafe_recordings/`)
+> - [ ] UrbanSound8K downloaded → `data/UrbanSound8K/`
+> - [ ] Baseline model trained and evaluated
+> - [ ] Cafe recordings scored and map generated
+
 ## Models
 
 | Model | Features | Status |
 |-------|----------|--------|
-| **Baseline**: SVM / Random Forest | MFCC (40 coefficients + deltas) | Implemented |
+| **Baseline**: SVM / Random Forest | MFCC (40 coefficients + deltas) | Implemented (not yet trained) |
 | **Proposed**: CNN | Mel-spectrograms + spatial context | Planned |
 
 ## Quick Start

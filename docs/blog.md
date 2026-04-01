@@ -31,7 +31,7 @@ More recent work by Piczak (2015) and Salamon & Bello (2017) showed that **Convo
 
 ### Complementary Data: SONYC-UST-V2
 
-While UrbanSound8K provides a clean, well-labeled benchmark, it was curated from Freesound uploads rather than recorded in situ. To complement it, we also incorporate **SONYC-UST-V2** (Cartwright et al., 2020) — a dataset of 18,510 audio recordings captured by acoustic sensors deployed across New York City as part of the Sounds of New York City (SONYC) project. Each recording comes with block-level latitude/longitude and multilabel annotations across 23 fine-grained urban sound classes (e.g., small-engine, jackhammer, non-machinery-impact). This dataset grounds our work in real NYC acoustics and provides a bridge between the controlled UrbanSound8K benchmark and our own field recordings.
+While UrbanSound8K provides a clean, well-labeled benchmark, it was curated from Freesound uploads rather than recorded in situ. To complement it, we plan to incorporate **SONYC-UST-V2** (Cartwright et al., 2020) — a dataset of 18,510 audio recordings captured by acoustic sensors deployed across New York City as part of the Sounds of New York City (SONYC) project. Each recording comes with block-level latitude/longitude and multilabel annotations across 23 fine-grained urban sound classes (e.g., small-engine, jackhammer, non-machinery-impact). This dataset would ground our work in real NYC acoustics and provide a bridge between the controlled UrbanSound8K benchmark and our own field recordings.
 
 ### Data Collection: NYC Cafe Recordings
 
@@ -55,6 +55,90 @@ The result is a data-driven "study-friendliness" score for each cafe, visualized
 New York City is home to over 27,000 restaurants and cafes, and thousands of students who rely on them as study spaces. By combining machine learning, audio analysis, and open urban data, we can provide actionable information that helps people find environments conducive to focus and productivity.
 
 Beyond the practical application, this project explores an interesting ML problem: how to transfer a model trained on general urban sounds to a specific downstream task (study-friendliness scoring) that requires domain-specific weighting and context integration.
+
+## Methods
+
+### Audio Feature Extraction
+
+Each audio clip is represented as a 240-dimensional feature vector using **Mel-Frequency Cepstral Coefficients (MFCCs)**:
+
+1. Extract 40 MFCC coefficients per time frame
+2. Compute first-order deltas (velocity) and second-order deltas (acceleration)
+3. Summarize each coefficient over time using **mean and standard deviation**
+
+This gives 40 × 3 derivatives × 2 statistics = **240 dimensions** per clip. MFCCs capture the spectral envelope — the "shape" of a sound — and the delta features capture how that shape changes over time, which helps distinguish transient events (car horn) from sustained ones (air conditioner).
+
+### Baseline Classifiers
+
+Two classifiers are trained on the MFCC features:
+
+| Model | Configuration |
+|-------|---------------|
+| **Random Forest** | 200 trees, no max depth, `n_jobs=-1` |
+| **SVM** | RBF kernel, C=10, gamma='scale' |
+
+Both are wrapped in a scikit-learn `Pipeline` with `StandardScaler` to normalize features before training. The 10-fold CV protocol from UrbanSound8K is followed strictly — audio clips from the same original recording are never split across train and test folds, preventing data leakage.
+
+### Study-Friendliness Scoring
+
+The core contribution is a distraction-weighted scoring system. Each UrbanSound8K class is assigned a **distraction weight** based on its subjective impact on concentration:
+
+| Class | Weight | Rationale |
+|-------|--------|----------|
+| Air conditioner | 0.10 | Steady hum — easily tuned out |
+| Engine idling | 0.15 | Low, constant — low distraction |
+| Street music | 0.40 | Variable — can be pleasant or distracting |
+| Children playing | 0.50 | Moderate |
+| Dog bark | 0.60 | Sudden, sharp |
+| Car horn | 0.90 | Sudden, attention-grabbing |
+| Siren | 0.85 | Loud, urgent |
+| Drilling | 0.95 | Sustained, very loud |
+| Jackhammer | 0.95 | Sustained, very loud |
+| Gun shot | 1.00 | Extreme — maximum distraction |
+
+The acoustic score is:
+
+```
+acoustic_score = (1 - weighted_distraction) × 100
+```
+
+where `weighted_distraction` is the proportion-weighted average distraction across all detected sound classes in a recording.
+
+The final study-friendliness score combines acoustic predictions with spatial context from NYC Open Data:
+
+```
+final_score = 0.9 × acoustic_score
+            + 0.1 × min(wifi_count / 10, 1.0) × 100
+            - 0.05 × min(eatery_count / 50, 1.0) × 100
+```
+
+Wi-Fi hotspot density is a positive signal (infrastructure for studying); eatery density is a slight negative proxy for foot traffic and noise. The acoustic score dominates at 90% weight. The final score is clamped to [0, 100] and mapped to five labels: **Excellent** (≥75), **Good** (≥55), **Fair** (≥35), **Poor** (≥20), **Avoid** (<20).
+
+## Expected Results
+
+> **Note**: Training has not yet been run — datasets are still being downloaded. This section describes what we expect to find based on the literature.
+
+**Baseline accuracy on UrbanSound8K**: Based on Salamon et al. (2014), MFCC + SVM achieves ~68% accuracy with 10-fold CV. Our implementation uses 40 MFCCs (vs. 13 in the original paper) and includes delta features, which should improve accuracy modestly. We expect:
+
+- Random Forest: ~60–65%
+- SVM (RBF): ~65–70%
+
+**Confusion patterns**: Classes with distinct spectral signatures (gun shot, jackhammer) are expected to be easier to classify. Classes with overlapping spectral content (children playing vs. street music) are expected to be harder.
+
+**Cafe scoring**: Once the baseline is trained and applied to our 7 cafe recordings, each cafe will receive an inside and outside score. We expect:
+- Indoor scores to be higher (quieter, controlled environment)
+- Long Island City cafes to have more variable outside scores due to mixed commercial/residential streets
+- Results will be published here after training
+
+## Next Steps
+
+1. **Download UrbanSound8K** → `data/UrbanSound8K/` and run `notebooks/01_data_exploration.ipynb`
+2. **Train baseline** → run `notebooks/02_baseline_model.ipynb` for single-split evaluation
+3. **Full 10-fold CV** → run `src/baseline_model.py::run_kfold_cv()` for proper accuracy estimate
+4. **Score cafe recordings** → apply trained model to `data/cafe_recordings/*.m4a`
+5. **Generate map** → visualize per-cafe scores on an interactive NYC map using folium
+6. **CNN model** → replace MFCC + SVM/RF with a CNN on mel-spectrograms for higher accuracy
+7. **SONYC-UST-V2** → incorporate NYC-specific recordings as additional training data
 
 ## References
 

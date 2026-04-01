@@ -137,6 +137,12 @@ def build_spatial_features(cafe_locations, wifi_df, eateries_df, radius_m=200):
     Returns:
         DataFrame with columns: name, latitude, longitude, wifi_count, eatery_count.
     """
+    eateries_valid = (
+        eateries_df.dropna(subset=["latitude", "longitude"])
+        if "latitude" in eateries_df.columns and "longitude" in eateries_df.columns
+        else None
+    )
+
     results = []
     for _, cafe in cafe_locations.iterrows():
         wifi_count = compute_density(
@@ -144,8 +150,7 @@ def build_spatial_features(cafe_locations, wifi_df, eateries_df, radius_m=200):
         )
 
         eatery_count = 0
-        if "latitude" in eateries_df.columns and "longitude" in eateries_df.columns:
-            eateries_valid = eateries_df.dropna(subset=["latitude", "longitude"])
+        if eateries_valid is not None:
             eatery_count = compute_density(
                 cafe["latitude"], cafe["longitude"], eateries_valid, radius_m
             )
