@@ -6,6 +6,29 @@ Using machine learning to estimate how "study-friendly" a cafe environment is in
 
 ## Overview
 
+This project trains an urban sound event classifier on [UrbanSound8K](https://urbansounddataset.weebly.com/urbansound8k.html), then applies it to field recordings from NYC cafes to detect distractive sound events (sirens, drilling, jackhammers, etc.). Audio predictions are combined with spatial context from [NYC Open Data](https://opendata.cityofnewyork.us/) (Wi-Fi hotspot density, nearby business counts) to produce a study-friendliness score for each location.
+
+**Deliverables:**
+- A map of NYC with predicted study-friendliness scores for recorded cafe locations
+- Acoustic outlier analysis: locations that are unexpectedly quiet or noisy
+
+## Current Status
+
+> **Pipeline code is complete. Awaiting dataset download and first training run.**
+>
+> - [x] Source code implemented (`src/`)
+> - [x] Notebooks ready (`notebooks/`)
+> - [x] 7 NYC cafe field recordings collected (`data/cafe_recordings/`)
+> - [ ] UrbanSound8K downloaded → `data/UrbanSound8K/`
+> - [ ] Baseline model trained and evaluated
+> - [ ] Cafe recordings scored and map generated
+
+## Models
+
+| Model | Features | Status |
+|-------|----------|--------|
+| **Baseline**: SVM / Random Forest | MFCC (40 coefficients + deltas) | Implemented (not yet trained) |
+| **Proposed**: CNN | Mel-spectrograms + spatial context | Planned |
 This project trains an urban sound event classifier on [UrbanSound8K](https://urbansounddataset.weebly.com/urbansound8k.html), then applies it to field recordings from 7 NYC cafes to detect distractive sound events (sirens, drilling, jackhammers, etc.). Audio predictions are combined with spatial context from [NYC Open Data](https://opendata.cityofnewyork.us/) (Wi-Fi hotspot density within 200m, nearby eatery count within 200m) to produce a 0–100 study-friendliness score for each location.
 
 ## What's Implemented vs. Planned
