@@ -196,7 +196,6 @@ Full argument reference:
 
 ```
 ├── README.md                         # This file
-├── CLAUDE.md                         # Guidance for Claude Code
 ├── env.yaml                          # Conda environment
 ├── .gitignore
 ├── docs/
