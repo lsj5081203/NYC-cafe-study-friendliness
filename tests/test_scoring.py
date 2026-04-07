@@ -1,7 +1,13 @@
 """Unit tests for src/scoring.py — no dataset required."""
 
 import pytest
-from src.scoring import compute_acoustic_score, compute_study_friendliness, classify_score
+from src.scoring import (
+    compute_acoustic_score,
+    compute_study_friendliness,
+    classify_score,
+    WIFI_SATURATION_COUNT,
+    EATERY_SATURATION_COUNT,
+)
 
 
 class TestComputeAcousticScore:
@@ -52,6 +58,14 @@ class TestComputeStudyFriendliness:
     def test_eatery_penalty(self):
         # 50 eateries → eatery_penalty = 100, 0.9*80 - 0.05*100 = 67.0
         assert compute_study_friendliness(80, 0, 50) == pytest.approx(67.0)
+        """WIFI_SATURATION_COUNT hotspots → full bonus (+10 points at default weight)."""
+        score = compute_study_friendliness(80, wifi_count=WIFI_SATURATION_COUNT, eatery_count=0)
+        assert score == pytest.approx(82.0)
+
+    def test_eatery_penalty(self):
+        """EATERY_SATURATION_COUNT eateries → full penalty (-5 points at default weight)."""
+        score = compute_study_friendliness(80, wifi_count=0, eatery_count=EATERY_SATURATION_COUNT)
+        assert score == pytest.approx(67.0)
 
     def test_clamped_to_zero(self):
         result = compute_study_friendliness(0, 0, 1000)
