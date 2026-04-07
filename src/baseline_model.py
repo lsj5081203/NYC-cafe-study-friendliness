@@ -18,7 +18,12 @@ from src.audio_features import extract_mfcc_batch
 
 
 def build_svm_pipeline():
-    """Build an SVM pipeline with standard scaling."""
+    """Build an SVM pipeline with standard scaling.
+
+    Uses an RBF kernel with C=10, matching the best configuration reported
+    by Salamon et al. 2014 ("A Dataset and Taxonomy for Urban Sound
+    Research") on UrbanSound8K.
+    """
     return Pipeline([
         ("scaler", StandardScaler()),
         ("svm", SVC(kernel="rbf", C=10, gamma="scale", random_state=42)),
@@ -26,9 +31,13 @@ def build_svm_pipeline():
 
 
 def build_rf_pipeline():
-    """Build a Random Forest pipeline with standard scaling."""
+    """Build a Random Forest pipeline.
+
+    No StandardScaler is included. Random Forest is scale-invariant (splits
+    are based on rank order of feature values, not magnitude), so scaling
+    would have no effect on model behavior and is intentionally omitted.
+    """
     return Pipeline([
-        ("scaler", StandardScaler()),
         ("rf", RandomForestClassifier(
             n_estimators=200, max_depth=None, random_state=42, n_jobs=-1
         )),
@@ -70,18 +79,24 @@ def evaluate_baseline(model, X_test, y_test):
         'confusion_matrix', and 'predictions'.
     """
     y_pred = model.predict(X_test)
-    target_names = [CLASS_NAMES[i] for i in range(len(CLASS_NAMES))]
+    labels = list(range(len(CLASS_NAMES)))
+    target_names = [CLASS_NAMES[i] for i in labels]
 
     return {
         "accuracy": accuracy_score(y_test, y_pred),
-        "report": classification_report(y_test, y_pred, target_names=target_names),
-        "confusion_matrix": confusion_matrix(y_test, y_pred),
+        "report": classification_report(
+            y_test, y_pred, labels=labels, target_names=target_names, zero_division=0
+        ),
+        "confusion_matrix": confusion_matrix(y_test, y_pred, labels=labels),
         "predictions": y_pred,
     }
 
 
 def run_single_split(data_dir, model_type="rf", sr=22050, n_mfcc=40):
     """Run training and evaluation on the default train/val/test split.
+
+    Uses folds 1-8 for training, fold 9 for validation (model selection),
+    and fold 10 for final test evaluation (reported once, at the end).
 
     Args:
         data_dir: Path to UrbanSound8K root directory.
@@ -90,7 +105,7 @@ def run_single_split(data_dir, model_type="rf", sr=22050, n_mfcc=40):
         n_mfcc: Number of MFCC coefficients.
 
     Returns:
-        Trained model and evaluation results dict.
+        Trained model and evaluation results dict (evaluated on test fold).
     """
     split = get_default_split()
 
@@ -98,21 +113,29 @@ def run_single_split(data_dir, model_type="rf", sr=22050, n_mfcc=40):
     train_audios, y_train, _ = get_fold_data(data_dir, split["train"], sr=sr)
     print(f"  {len(train_audios)} training clips loaded.")
 
+    print("Loading validation data...")
+    val_audios, y_val, _ = get_fold_data(data_dir, split["val"], sr=sr)
+    print(f"  {len(val_audios)} validation clips loaded.")
+
     print("Loading test data...")
     test_audios, y_test, _ = get_fold_data(data_dir, split["test"], sr=sr)
     print(f"  {len(test_audios)} test clips loaded.")
 
     print("Extracting MFCC features...")
     X_train = extract_mfcc_batch(train_audios, sr=sr, n_mfcc=n_mfcc)
+    X_val = extract_mfcc_batch(val_audios, sr=sr, n_mfcc=n_mfcc)
     X_test = extract_mfcc_batch(test_audios, sr=sr, n_mfcc=n_mfcc)
     print(f"  Feature shape: {X_train.shape[1]} dimensions")
 
     print(f"Training {model_type.upper()} model...")
     model = train_baseline(X_train, y_train, model_type=model_type)
 
-    print("Evaluating...")
+    val_results = evaluate_baseline(model, X_val, y_val)
+    print(f"  Val accuracy: {val_results['accuracy']:.4f}")
+
+    print("Evaluating on test set...")
     results = evaluate_baseline(model, X_test, y_test)
-    print(f"  Accuracy: {results['accuracy']:.4f}")
+    print(f"  Test accuracy: {results['accuracy']:.4f}")
     print(results["report"])
 
     return model, results
@@ -120,6 +143,13 @@ def run_single_split(data_dir, model_type="rf", sr=22050, n_mfcc=40):
 
 def run_kfold_cv(data_dir, model_type="rf", sr=22050, n_mfcc=40):
     """Run full 10-fold cross-validation using UrbanSound8K's predefined folds.
+
+    Trains a fresh model for each of the 10 folds (leaving one fold out as
+    test each time) and reports per-fold and mean accuracy.
+
+    Note: Trained models are NOT saved to disk. This function is for
+    reporting cross-validated accuracy only. To obtain a model for
+    inference, use run_single_split(), which returns the trained model.
 
     Args:
         data_dir: Path to UrbanSound8K root directory.
@@ -148,7 +178,7 @@ def run_kfold_cv(data_dir, model_type="rf", sr=22050, n_mfcc=40):
         print(f"Fold {test_fold:2d}: accuracy = {results['accuracy']:.4f}")
 
     mean_acc = np.mean(fold_accuracies)
-    std_acc = np.std(fold_accuracies)
+    std_acc = np.std(fold_accuracies, ddof=1)
     print(f"\n10-Fold CV: {mean_acc:.4f} +/- {std_acc:.4f}")
 
     return fold_accuracies, mean_acc

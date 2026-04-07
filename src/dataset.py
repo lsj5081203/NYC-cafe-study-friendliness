@@ -56,9 +56,18 @@ def load_audio(file_path, sr=22050, duration=4.0):
 
     Returns:
         numpy array of shape (n_samples,) where n_samples = sr * duration.
+
+    Raises:
+        ValueError: If the file loads successfully but librosa returns an
+            empty waveform (len == 0). This can happen with corrupt files,
+            unsupported codecs, or clips that consist entirely of silence
+            that librosa trims to zero length.
     """
     n_samples = int(sr * duration)
     y, _ = librosa.load(file_path, sr=sr, duration=duration)
+
+    if len(y) == 0:
+        raise ValueError(f"Audio file returned empty waveform: {file_path}")
 
     # Pad if shorter than target duration
     if len(y) < n_samples:
@@ -72,6 +81,11 @@ def load_audio(file_path, sr=22050, duration=4.0):
 
 def get_fold_data(data_dir, folds, sr=22050, duration=4.0):
     """Load all audio clips from specified folds.
+
+    Files that cannot be loaded (e.g., missing files, corrupt audio, empty
+    waveforms) are skipped with a printed warning. The returned arrays only
+    contain successfully loaded clips, so len(audios) may be less than the
+    number of rows in the metadata for the requested folds.
 
     Args:
         data_dir: Path to UrbanSound8K root directory.

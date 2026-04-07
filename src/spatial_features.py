@@ -34,7 +34,6 @@ def download_wifi_hotspots(cache_path=None, limit=5000):
     response.raise_for_status()
     df = pd.DataFrame(response.json())
 
-    # Convert lat/lon to numeric
     for col in ["latitude", "longitude"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -55,6 +54,10 @@ def download_wifi_hotspots(cache_path=None, limit=5000):
 def download_eateries(cache_path=None, limit=10000):
     """Download NYC eatery directory from NYC Open Data.
 
+    Rows missing lat/lon are dropped with dropna() before the result is
+    cached, so the cached CSV only contains geometrically valid records.
+    Re-downloading and re-caching will always produce a clean file.
+
     Args:
         cache_path: If provided, save/load from this CSV path.
         limit: Max number of records to fetch.
@@ -74,6 +77,8 @@ def download_eateries(cache_path=None, limit=10000):
     for col in ["latitude", "longitude"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=[c for c in ["latitude", "longitude"] if c in df.columns])
 
     if cache_path:
         dir_name = os.path.dirname(cache_path)
@@ -128,6 +133,11 @@ def compute_density(cafe_lat, cafe_lon, locations_df, radius_m=200):
 def build_spatial_features(cafe_locations, wifi_df, eateries_df, radius_m=200):
     """Compute spatial context features for each cafe location.
 
+    eateries_df is pre-filtered for valid lat/lon into eateries_valid once
+    before the per-cafe loop. This avoids re-running dropna() on every
+    iteration and is safe because download_eateries() already applies
+    dropna() before caching; the in-loop guard is a defensive fallback.
+
     Args:
         cafe_locations: DataFrame with 'name', 'latitude', 'longitude' columns.
         wifi_df: Wi-Fi hotspots DataFrame.
@@ -137,6 +147,13 @@ def build_spatial_features(cafe_locations, wifi_df, eateries_df, radius_m=200):
     Returns:
         DataFrame with columns: name, latitude, longitude, wifi_count, eatery_count.
     """
+    # Pre-filter once outside the loop
+    eateries_valid = (
+        eateries_df.dropna(subset=["latitude", "longitude"])
+        if "latitude" in eateries_df.columns and "longitude" in eateries_df.columns
+        else None
+    )
+
     results = []
     for _, cafe in cafe_locations.iterrows():
         wifi_count = compute_density(
@@ -144,8 +161,7 @@ def build_spatial_features(cafe_locations, wifi_df, eateries_df, radius_m=200):
         )
 
         eatery_count = 0
-        if "latitude" in eateries_df.columns and "longitude" in eateries_df.columns:
-            eateries_valid = eateries_df.dropna(subset=["latitude", "longitude"])
+        if eateries_valid is not None and len(eateries_valid) > 0:
             eatery_count = compute_density(
                 cafe["latitude"], cafe["longitude"], eateries_valid, radius_m
             )

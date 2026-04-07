@@ -4,6 +4,16 @@ Study-friendliness scoring for NYC cafe locations.
 Combines acoustic predictions (urban sound classification) with spatial
 context features (Wi-Fi density, business density) to produce a
 study-friendliness score for each cafe.
+
+Design notes:
+- DISTRACTION_WEIGHTS are subjective heuristics assigned by the project
+  authors. They are not derived from user studies or perceptual data.
+  Treat them as reasonable defaults that should be recalibrated if
+  ground-truth distraction ratings become available.
+- WIFI_SATURATION_COUNT and EATERY_SATURATION_COUNT are empirical
+  placeholders chosen to reflect typical NYC neighborhood densities.
+  They should be recalibrated from actual data distributions before
+  any production use.
 """
 
 import numpy as np
@@ -28,6 +38,11 @@ def compute_acoustic_score(predictions, class_counts=None):
     """Compute an acoustic study-friendliness score from sound classifications.
 
     Higher score = more study-friendly (less distracting).
+
+    Class IDs not present in DISTRACTION_WEIGHTS (e.g., IDs from a model
+    trained on a different taxonomy) default to a neutral weight of 0.5,
+    representing moderate distraction. This prevents hard failures when
+    the classifier produces out-of-vocabulary predictions.
 
     Args:
         predictions: Array of predicted class IDs for audio windows
@@ -57,12 +72,19 @@ def compute_acoustic_score(predictions, class_counts=None):
     return max(0.0, min(100.0, score))
 
 
+# Spatial normalization caps (empirically chosen for NYC scale; recalibrate from data).
+# Wi-Fi: public hotspots within 200m — 10 is a reasonable upper bound for most neighborhoods.
+# Eateries: businesses within 200m — 50 is achievable in Midtown, extreme elsewhere.
+WIFI_SATURATION_COUNT = 10
+EATERY_SATURATION_COUNT = 50
+
+
 def compute_study_friendliness(
     acoustic_score,
     wifi_count,
     eatery_count,
     wifi_weight=0.1,
-    eatery_weight=-0.05,
+    eatery_weight=0.05,
     acoustic_weight=0.9,
 ):
     """Combine acoustic and spatial features into a final study-friendliness score.
@@ -70,25 +92,37 @@ def compute_study_friendliness(
     Higher Wi-Fi density is a positive signal (infrastructure for studying).
     Higher eatery density is a slight negative signal (more foot traffic, noise).
 
+    Weight formula (defaults):
+        score = 0.9 * acoustic_score
+              + 0.1 * wifi_bonus       # max +10 points
+              - 0.05 * eatery_penalty  # max -5 points
+
+    where wifi_bonus and eatery_penalty are each normalized to [0, 100]
+    using WIFI_SATURATION_COUNT and EATERY_SATURATION_COUNT respectively.
+    The acoustic score therefore contributes 90% of the final value and
+    completely dominates the spatial adjustments.
+
     Args:
         acoustic_score: Acoustic score (0-100).
         wifi_count: Number of Wi-Fi hotspots nearby.
         eatery_count: Number of eateries nearby.
-        wifi_weight: Weight for Wi-Fi bonus.
-        eatery_weight: Weight for eatery penalty.
-        acoustic_weight: Weight for acoustic score (should dominate).
+        wifi_weight: Fractional weight for Wi-Fi bonus (adds to score).
+            Default 0.1 caps the maximum Wi-Fi contribution at +10 points.
+        eatery_weight: Fractional weight for eatery penalty (subtracts from score).
+            Default 0.05 caps the maximum eatery penalty at -5 points.
+        acoustic_weight: Weight for acoustic score. Default 0.9.
 
     Returns:
         Final study-friendliness score (0-100).
     """
-    # Normalize spatial features (rough normalization for NYC)
-    wifi_bonus = min(wifi_count / 10.0, 1.0) * 100  # cap at 10 hotspots nearby
-    eatery_penalty = min(eatery_count / 50.0, 1.0) * 100  # cap at 50 eateries
+    # Normalize spatial features to [0, 100]
+    wifi_bonus = min(wifi_count / WIFI_SATURATION_COUNT, 1.0) * 100
+    eatery_penalty = min(eatery_count / EATERY_SATURATION_COUNT, 1.0) * 100
 
     score = (
         acoustic_weight * acoustic_score
         + wifi_weight * wifi_bonus
-        + eatery_weight * eatery_penalty
+        - eatery_weight * eatery_penalty
     )
 
     return max(0.0, min(100.0, score))

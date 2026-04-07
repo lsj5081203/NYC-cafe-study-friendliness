@@ -2,7 +2,13 @@
 
 import numpy as np
 import pytest
-from src.scoring import compute_acoustic_score, compute_study_friendliness, classify_score
+from src.scoring import (
+    compute_acoustic_score,
+    compute_study_friendliness,
+    classify_score,
+    WIFI_SATURATION_COUNT,
+    EATERY_SATURATION_COUNT,
+)
 
 
 # --- compute_acoustic_score ---
@@ -50,13 +56,13 @@ class TestComputeStudyFriendliness:
         assert score == pytest.approx(72.0)
 
     def test_wifi_bonus(self):
-        """10 wifi hotspots → full bonus."""
-        score = compute_study_friendliness(80, wifi_count=10, eatery_count=0)
+        """WIFI_SATURATION_COUNT hotspots → full bonus (+10 points at default weight)."""
+        score = compute_study_friendliness(80, wifi_count=WIFI_SATURATION_COUNT, eatery_count=0)
         assert score == pytest.approx(82.0)
 
     def test_eatery_penalty(self):
-        """50 eateries → full penalty."""
-        score = compute_study_friendliness(80, wifi_count=0, eatery_count=50)
+        """EATERY_SATURATION_COUNT eateries → full penalty (-5 points at default weight)."""
+        score = compute_study_friendliness(80, wifi_count=0, eatery_count=EATERY_SATURATION_COUNT)
         assert score == pytest.approx(67.0)
 
     def test_clamped_to_zero(self):
