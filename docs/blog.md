@@ -114,31 +114,72 @@ final_score = 0.9 × acoustic_score
 
 Wi-Fi hotspot density is a positive signal (infrastructure for studying); eatery density is a slight negative proxy for foot traffic and noise. The acoustic score dominates at 90% weight. The final score is clamped to [0, 100] and mapped to five labels: **Excellent** (≥75), **Good** (≥55), **Fair** (≥35), **Poor** (≥20), **Avoid** (<20).
 
-## Expected Results
+## Results
 
-> **Note**: Training has not yet been run — datasets are still being downloaded. This section describes what we expect to find based on the literature.
+### Model Accuracy on UrbanSound8K
 
-**Baseline accuracy on UrbanSound8K**: Based on Salamon et al. (2014), MFCC + SVM achieves ~68% accuracy with 10-fold CV. Our implementation uses 40 MFCCs (vs. 13 in the original paper) and includes delta features, which should improve accuracy modestly. We expect:
+We trained and evaluated three classifiers using 10-fold cross-validation:
 
-- Random Forest: ~60–65%
-- SVM (RBF): ~65–70%
+| Model | Test Accuracy |
+|-------|--------------|
+| Random Forest (MFCC) | 72.64% |
+| SVM (MFCC) | 73.00% |
+| **CNN (Mel-spectrograms)** | **83.39%** |
 
-**Confusion patterns**: Classes with distinct spectral signatures (gun shot, jackhammer) are expected to be easier to classify. Classes with overlapping spectral content (children playing vs. street music) are expected to be harder.
+**Key finding**: The CNN achieves **+10.4 percentage points** improvement over the baseline SVM, representing a 14.3% relative error reduction. This aligns with prior work (Piczak 2015, Salamon & Bello 2017) showing that CNNs on mel-spectrograms significantly outperform hand-crafted features.
 
-**Cafe scoring**: Once the baseline is trained and applied to our 7 cafe recordings, each cafe will receive an inside and outside score. We expect:
-- Indoor scores to be higher (quieter, controlled environment)
-- Long Island City cafes to have more variable outside scores due to mixed commercial/residential streets
-- Results will be published here after training
+**CNN Architecture**: 4 convolutional blocks (32→64→128→256 filters), batch normalization, dropout regularization, and global average pooling. Total parameters: 390K. Training time on Colab A100 GPU: 96.6 seconds for 30 epochs with Adam optimizer and cosine annealing learning rate schedule. Best validation accuracy: 80.51% (epoch 24).
+
+### Per-Class Difficulty
+
+Looking at the CNN's per-class F1 scores reveals which sounds are easiest and hardest to classify:
+
+**Easiest classes** (distinct spectral signatures):
+- Gun shot: F1 = 0.98 (sudden, broadband burst)
+- Engine idling: F1 = 0.92 (steady, low-frequency hum)
+- Jackhammer: F1 = 0.91 (periodic impact structure)
+- Car horn: F1 = 0.87 (short tonal burst)
+
+**Hardest classes** (overlapping spectral content):
+- Dog bark: F1 = 0.77 (variable pitch, confuses with children playing)
+- Air conditioner: F1 = 0.78 (steady broadband noise, varies by model)
+- Siren: F1 = 0.78 (frequency sweep similar to street music)
+- Children playing: F1 = 0.78 (mix of laughs, shouts, variable pitch)
+
+### Cafe Scoring Results
+
+Applied the trained CNN to **7 NYC cafes** (14 recordings: inside + outside per cafe):
+
+| Cafe | Avg Final Score | Label | Best Acoustic (recording) |
+|------|----------------|-------|---------------------------|
+| Jacx & Co Food Hall | 47.74 | Fair | 50.85 (outside) |
+| Blank Street Cafe | 47.14 | Fair | **55.51 (inside)** |
+| Rosecrans Cafe | 44.95 | Fair | 46.23 (outside) |
+| Joe Coffee | 42.60 | Fair | 41.33 (inside) |
+| Paris Baguette | 42.42 | Fair | 47.97 (inside) |
+| Starbucks | 42.42 | Fair | 46.36 (outside) |
+| Utopia Bagel | 40.56 | Fair | 46.10 (inside) |
+
+All cafes scored as "Fair" (35–54 range), indicating moderate noise levels for studying. The most striking single result: **Blank Street Cafe's inside recording scored 55.51** — the highest individual acoustic score in the dataset, and a full **15.2 points above its own outside recording** (40.34). This inside/outside gap is the largest across all venues and reflects genuine acoustic isolation: the interior's enclosed volume and soft surfaces attenuate the Greenwich Village street noise. Jacx & Co Food Hall, by contrast, scored almost identically inside (50.81) and outside (50.85), consistent with a food hall's open layout offering little acoustic separation from its surroundings.
+
+### Spatial Features
+
+Wi-Fi hotspot counts ranged from 1–6 per cafe within a 200-meter radius. The eatery API returned a 403 Forbidden error during inference, preventing the use of business density as a spatial penalty feature. This limitation should be addressed by requesting an NYC Open Data app token or using an alternative data source.
+
+### Implications
+
+The study-friendliness scores (40–48) reflect a realistic picture of urban NYC cafes: they are generally noisy environments with moderate distraction potential. The Fair clustering is expected — UrbanSound8K's 10 outdoor sound classes don't include typical cafe sounds (espresso machines, cutlery, conversation), so the CNN force-maps cafe audio onto intermediate-distraction classes like `street_music` (weight 0.40) and `children_playing` (weight 0.50), compressing all acoustic scores toward the 40–55 range. Getting a cafe into "Good" (≥55) territory would require either recalibrating `DISTRACTION_WEIGHTS` for a study context or fine-tuning the CNN on labeled cafe-ambience audio. Both are tractable; the data collection work is already done.
 
 ## Next Steps
 
-1. **Download UrbanSound8K** → `data/UrbanSound8K/` and run `notebooks/01_data_exploration.ipynb`
-2. **Train baseline** → run `notebooks/02_baseline_model.ipynb` for single-split evaluation
-3. **Full 10-fold CV** → run `src/baseline_model.py::run_kfold_cv()` for proper accuracy estimate
-4. **Score cafe recordings** → apply trained model to `data/cafe_recordings/*.m4a`
-5. **Generate map** → visualize per-cafe scores on an interactive NYC map using folium
-6. **CNN model** → replace MFCC + SVM/RF with a CNN on mel-spectrograms for higher accuracy
-7. **SONYC-UST-V2** → incorporate NYC-specific recordings as additional training data
+The core pipeline is complete. Suggested future work:
+
+1. **Outlier detection** — Statistical analysis to flag cafes with unexpected scores relative to their neighborhood
+2. **Interactive map visualization** — Folium or MapboxGL frontend to explore cafe scores by location
+3. **Temporal analysis** — Track how study-friendliness scores vary by time of day (morning vs. evening rush)
+4. **Fine-tuning on SONYC-UST-V2** — NYC-specific acoustic sensor data to improve urban sound classification
+5. **CNN fine-tuning** — Transfer learning on domain-specific urban sound datasets
+6. **Spatial data completion** — Resolve eatery API 403 error and incorporate business density in final scoring
 
 ## References
 

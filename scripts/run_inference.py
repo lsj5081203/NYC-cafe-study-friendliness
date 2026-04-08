@@ -1,11 +1,18 @@
 """
 End-to-end inference script: cafe recordings → study-friendliness scores.
 
-Usage:
+Usage (sklearn):
     python scripts/run_inference.py --model data/models/rf_model.pkl \
         --recordings data/cafe_recordings \
         --metadata data/cafe_recordings/cafe_metadata.csv \
         --output data/results/cafe_scores.csv
+
+Usage (CNN):
+    python scripts/run_inference.py --model models/cnn_best.pt \
+        --model-type cnn \
+        --recordings data/cafe_recordings \
+        --metadata data/cafe_recordings/cafe_metadata.csv \
+        --output data/results/cafe_scores_cnn.csv
 """
 
 import argparse
@@ -20,7 +27,7 @@ import librosa
 # Ensure project root is on path when run as a script
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.audio_features import extract_mfcc_batch
+from src.audio_features import extract_mfcc_batch, extract_mel_spectrogram
 from src.baseline_model import load_model
 from src.scoring import compute_acoustic_score, compute_study_friendliness, classify_score
 from src.spatial_features import (
@@ -35,6 +42,11 @@ SR = 22050
 DURATION = 4.0          # window length in seconds
 HOP_DURATION = 2.0      # sliding window hop (50% overlap)
 N_MFCC = 40
+
+# CNN-specific feature config — must match notebook 03 training constants
+N_MELS = 128
+HOP_LENGTH = 512
+FIXED_T = 173           # ceil(88200 / 512) = 173 frames for a 4 s clip at 22050 Hz
 
 
 def check_ffmpeg():
@@ -88,13 +100,63 @@ def load_and_window(file_path, sr=SR, window_sec=DURATION, hop_sec=HOP_DURATION)
     return windows
 
 
+def predict_cnn(windows, model, device="cpu"):
+    """Run batched CNN inference on a list of audio windows.
+
+    Extracts a log-mel spectrogram for each window, pads/truncates to FIXED_T
+    frames (matching the training shape of 128 x 173), stacks into a single
+    batch tensor, and returns the argmax class index for every window.
+
+    Args:
+        windows: List of numpy waveform arrays (each length SR * DURATION).
+        model: UrbanSoundCNN instance in eval mode.
+        device: Device string passed to torch ('cpu' or 'cuda').
+
+    Returns:
+        numpy.ndarray of integer class predictions, shape (N,).
+    """
+    import torch
+
+    mels = []
+    for w in windows:
+        mel = extract_mel_spectrogram(w, sr=SR, n_mels=N_MELS, hop_length=HOP_LENGTH)
+        # Pad or truncate to FIXED_T — must match training preprocessing
+        if mel.shape[1] < FIXED_T:
+            mel = np.pad(
+                mel,
+                ((0, 0), (0, FIXED_T - mel.shape[1])),
+                mode="constant",
+                constant_values=mel.min(),
+            )
+        else:
+            mel = mel[:, :FIXED_T]
+        mels.append(mel)
+
+    # Stack into (N, 1, 128, 173) float32 tensor
+    batch = torch.tensor(np.stack(mels), dtype=torch.float32).unsqueeze(1).to(device)
+
+    with torch.no_grad():
+        logits = model(batch)
+    predictions = logits.argmax(dim=1).cpu().numpy()
+    return predictions
+
+
 def run_inference(model_path, recordings_dir, metadata_path, output_path,
-                  wifi_cache="data/cache/wifi.csv", eatery_cache="data/cache/eateries.csv"):
+                  model_type="sklearn",
+                  wifi_cache="data/cache/wifi.csv",
+                  eatery_cache="data/cache/eateries.csv"):
     check_ffmpeg()
 
     # ── Load model ──────────────────────────────────────────────────────────
-    print(f"Loading model from {model_path} ...")
-    model = load_model(model_path)
+    print(f"Loading {model_type} model from {model_path} ...")
+    if model_type == "cnn":
+        import torch
+        from src.cnn_model import UrbanSoundCNN, load_cnn_model
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"  Device: {device}")
+        cnn_model = load_cnn_model(model_path, device=device)
+    else:
+        model = load_model(model_path)
 
     # ── Load cafe metadata ───────────────────────────────────────────────────
     meta = pd.read_csv(metadata_path)
@@ -122,11 +184,19 @@ def run_inference(model_path, recordings_dir, metadata_path, output_path,
         if not windows:
             continue
 
-        X = extract_mfcc_batch(windows, sr=SR, n_mfcc=N_MFCC)
-        predictions = model.predict(X)
+        if model_type == "cnn":
+            predictions = predict_cnn(windows, cnn_model, device=device)
+        else:
+            X = extract_mfcc_batch(windows, sr=SR, n_mfcc=N_MFCC)
+            predictions = model.predict(X)
+
         acoustic_score = compute_acoustic_score(predictions)
 
-        spatial = spatial_lookup.loc[row["name"]]
+        try:
+            spatial = spatial_lookup.loc[row["name"]]
+        except KeyError:
+            print(f"  Warning: cafe '{row['name']}' not found in spatial features, skipping.")
+            continue
         final_score = compute_study_friendliness(
             acoustic_score,
             wifi_count=spatial["wifi_count"],
@@ -181,7 +251,10 @@ def run_inference(model_path, recordings_dir, metadata_path, output_path,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Score NYC cafes from audio recordings.")
-    parser.add_argument("--model", required=True, help="Path to saved .pkl model file")
+    parser.add_argument("--model", required=True,
+                        help="Path to saved model file (.pkl for sklearn, .pt for CNN)")
+    parser.add_argument("--model-type", default="sklearn", choices=["sklearn", "cnn"],
+                        help="Model backend: 'sklearn' (default) or 'cnn'")
     parser.add_argument("--recordings", default="data/cafe_recordings",
                         help="Directory containing cafe audio files")
     parser.add_argument("--metadata", default="data/cafe_recordings/cafe_metadata.csv",
@@ -197,6 +270,7 @@ if __name__ == "__main__":
         recordings_dir=args.recordings,
         metadata_path=args.metadata,
         output_path=args.output,
+        model_type=args.model_type,
         wifi_cache=args.wifi_cache,
         eatery_cache=args.eatery_cache,
     )

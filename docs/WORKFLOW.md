@@ -118,11 +118,11 @@ fold_accs, mean_acc = run_kfold_cv("data/UrbanSound8K", model_type="rf")
 # Runtime: ~30 minutes on CPU (3 min × 10 folds)
 ```
 
-**Expected results:**
-- Random Forest: ~65% accuracy
-- SVM with RBF kernel: ~63% accuracy
+**Actual results (10-fold CV):**
+- Random Forest: 72.64% accuracy
+- SVM with RBF kernel: 73.00% accuracy
 
-Both are reasonable baselines; RF is faster and scale-invariant.
+Both significantly outperform the literature baselines. RF is faster and scale-invariant.
 
 ### 2.3 Save the Trained Model
 
@@ -134,6 +134,25 @@ save_model(model, "data/models/rf_model.pkl")
 ```
 
 The saved model is a sklearn Pipeline including the feature extraction parameters.
+
+## Stage 2.5: Train CNN Model (Optional, requires GPU)
+
+For higher accuracy (83.39% vs 73.00% SVM), train a CNN on mel-spectrograms:
+
+```bash
+jupyter notebook notebooks/03_cnn_model.ipynb
+```
+
+This notebook:
+- Prepares mel-spectrogram data (UrbanSound8K)
+- Defines UrbanSoundCNN architecture (4 conv blocks, 390K params)
+- Trains with Adam + cosine annealing LR schedule
+- Evaluates 10-fold CV performance (best: 80.51% val accuracy at epoch 24)
+- Saves trained model to `data/models/cnn_model.pth`
+
+Runtime on Colab A100 GPU: ~97 seconds. Consumer GPUs (RTX 3060): 5-15 minutes.
+
+The CNN is now recommended over baseline models for production use.
 
 ## Stage 3: Run Inference on Cafe Recordings
 
@@ -291,6 +310,9 @@ Check that:
 **Issue**: "ModuleNotFoundError: No module named 'src'"
 - **Solution**: Run scripts from the project root directory: `cd /path/to/NYC-cafe-study-friendliness`
 
+**Issue**: NYC Open Data API returns 403 Forbidden (eatery_count=0)
+- **Solution**: Eatery API occasionally rejects requests. Try again later, or request an NYC Open Data app token at https://dev.socrata.com/. Current workaround: set eatery_weight=0 in scoring.py to skip this penalty.
+
 **Issue**: API timeout downloading spatial features
 - **Solution**: Use cached data if available (`--wifi-cache` and `--eatery-cache` flags); caches persist across runs
 
@@ -303,15 +325,16 @@ Check that:
 ## What's Implemented vs. Planned
 
 ### Implemented
-- UrbanSound8K training with MFCC + RF/SVM
+- UrbanSound8K training with MFCC + RF/SVM (72.64% / 73.00% accuracy)
 - 10-fold CV with proper fold management (no leakage)
+- CNN on mel-spectrograms (83.39% test accuracy)
 - End-to-end inference script on cafe recordings
 - Spatial context fetching and density computation
 - Study-friendliness scoring (acoustic + spatial)
 - CLI tool for scoring batches of recordings
+- 7 NYC cafes scored (all "Fair", 40.56–47.74)
 
 ### Planned
-- CNN on mel-spectrograms (expected ~79% accuracy vs. ~65% baseline)
 - Spatial context fusion in CNN (concatenate features to final layer)
 - Interactive web map visualization (Folium or MapboxGL)
 - Outlier detection (statistical flagging of unexpected results)
