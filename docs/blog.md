@@ -56,40 +56,11 @@ Could I have done manual labeling instead? Sure — listen to each recording, no
 
 ### UrbanSound8K
 
-8,732 clips across 10 classes, pre-split into 10 folds. The fold structure matters — clips from the same original recording are kept together in one fold to prevent data leakage. I followed this protocol strictly for all evaluation.
-
-Class distribution (from notebook 01):
-
-| Class | Count | % of Dataset |
-|-------|-------|-------------|
-| Air conditioner | 1000 | 11.5% |
-| Car horn | 429 | 4.9% |
-| Children playing | 1000 | 11.5% |
-| Dog bark | 1000 | 11.5% |
-| Drilling | 1000 | 11.5% |
-| Engine idling | 1000 | 11.5% |
-| Gun shot | 374 | 4.3% |
-| Jackhammer | 1000 | 11.5% |
-| Siren | 929 | 10.6% |
-| Street music | 1000 | 11.5% |
-
-The dataset is roughly balanced for most classes, with car horn and gun shot being the smallest. This slight imbalance didn't significantly hurt model performance — the small classes actually turned out to be among the easiest to classify because they have very distinctive spectral signatures.
+8,732 clips across 10 classes (air conditioner, car horn, children playing, dog bark, drilling, engine idling, gun shot, jackhammer, siren, street music), pre-split into 10 folds. Most classes have ~1,000 clips; car horn (429) and gun shot (374) are smaller. The fold structure keeps clips from the same original recording together to prevent data leakage — I followed this protocol strictly. The mild imbalance didn't hurt performance: car horn and gun shot ended up among the easiest classes due to their distinctive spectral signatures.
 
 ### NYC Cafe Recordings
 
-I recorded 7 cafes across Greenwich Village, West Village, and Long Island City. Selection criteria: (1) enough seating that people actually study there, and (2) 4+ stars on Google Maps. At each cafe I recorded ~2 minutes of audio both inside and outside using my phone, giving 14 total recordings.
-
-| Cafe | Neighborhood | Inside | Outside |
-|------|-------------|--------|--------|
-| Blank Street Cafe | Greenwich Village | ✓ | ✓ |
-| Jacx & Co Food Hall | Long Island City | ✓ | ✓ |
-| Rosecrans Cafe | West Village | ✓ | ✓ |
-| Joe Coffee | Greenwich Village | ✓ | ✓ |
-| Paris Baguette | Greenwich Village | ✓ | ✓ |
-| Starbucks | Greenwich Village | ✓ | ✓ |
-| Utopia Bagel | Long Island City | ✓ | ✓ |
-
-The inside/outside split lets me assess two things: what acoustic environment greets you at the door, and how well the cafe's walls actually isolate you from street noise.
+I recorded 7 cafes across Greenwich Village, West Village, and Long Island City: Blank Street, Jacx & Co Food Hall, Rosecrans, Joe Coffee, Paris Baguette, Starbucks, Utopia Bagel. Selection criteria: (1) enough seating to actually study, and (2) 4+ stars on Google Maps. At each cafe I recorded ~2 minutes of audio both inside and outside using my phone (14 recordings total). The inside/outside split lets me assess both the seated environment and how well the walls isolate you from street noise.
 
 ### Spatial Data
 
@@ -109,32 +80,20 @@ The eatery directory endpoint returned a 403 Forbidden error during inference �
 
 ## Methods
 
-### Feature Extraction: MFCC
+### Feature Extraction
 
-For the baseline classifiers, each audio clip becomes a 240-dimensional feature vector:
+For the baseline classifiers, each clip becomes a 240-dim MFCC vector: 40 coefficients × 3 (base + delta + delta-delta) × 2 (mean + std over time). MFCCs capture spectral shape and the deltas capture how it changes — that's what distinguishes a transient sound (car horn) from a sustained one (AC). MFCCs are modeled on human hearing, which is why they've been the standard audio feature for decades.
 
-1. Extract 40 MFCC coefficients per time frame (captures spectral shape — what frequencies are dominant)
-2. Compute delta (first derivative) and delta-delta (second derivative) of the MFCCs (captures how the spectral shape changes over time)
-3. Take the mean and standard deviation of each coefficient across all time frames
-
-That gives 40 coefficients × 3 (base + delta + delta-delta) × 2 (mean + std) = 240 dimensions per clip.
-
-Why MFCCs? They're modeled on human hearing — the mel scale compresses higher frequencies where humans are less sensitive, focusing representation on the perceptually important part of the spectrum. They've been the standard feature for audio classification since the speech recognition days.
-
-### Feature Extraction: Mel-Spectrogram
-
-For the CNN, I used 128-bin log-mel spectrograms. These are basically heatmap images — time on the x-axis, frequency (mel-scaled) on the y-axis, color representing energy. The CNN learns to read these "images of sound" the same way an image classifier learns to read photos.
-
-Each spectrogram has shape (128, 173) — 128 frequency bins × 173 time frames (for 4-second clips at the default hop length). The CNN sees these as single-channel grayscale images.
+For the CNN, I used 128-bin log-mel spectrograms instead — heatmap images of sound, with time on x, frequency on y, energy as color. Each one has shape (128, 173) for a 4-second clip. The CNN treats them as grayscale images.
 
 ### Baseline Classifiers
 
-| Model | Configuration | Rationale |
-|-------|--------------|----------|
-| Random Forest | 200 trees, no max depth | Good default for tabular data, handles feature interactions |
-| SVM | RBF kernel, C=10, gamma='scale' | Strong on medium-dimensional features with StandardScaler |
+| Model | Configuration |
+|-------|---------------|
+| Random Forest | 200 trees, no max depth |
+| SVM | RBF kernel, C=10, gamma='scale' |
 
-Both wrapped in a scikit-learn Pipeline with StandardScaler. Feature normalization matters for SVM (RBF kernel is distance-based); less so for RF, but I kept the pipeline consistent.
+Both wrapped in a scikit-learn Pipeline with StandardScaler.
 
 ### CNN Architecture
 
@@ -146,16 +105,10 @@ Input (1, 128, 173)
 → Conv Block 2: 64 filters, 3×3, BatchNorm, ReLU, MaxPool 2×2
 → Conv Block 3: 128 filters, 3×3, BatchNorm, ReLU, MaxPool 2×2
 → Conv Block 4: 256 filters, 3×3, BatchNorm, ReLU, MaxPool 2×2
-→ Global Average Pooling
-→ Dropout (0.3)
-→ Dense 128, ReLU
-→ Dropout (0.3)
-→ Dense 10 (softmax)
+→ Global Average Pooling → Dropout (0.3) → Dense 128 → Dropout (0.3) → Dense 10
 ```
 
-Total parameters: ~390K. Trained for 30 epochs with Adam optimizer and cosine annealing LR schedule (starting at 1e-3). Training took 96.6 seconds on a Colab A100 GPU. Best validation accuracy: 80.51% at epoch 24.
-
-I chose this architecture because it's in the sweet spot for UrbanSound8K — deep enough to learn spectro-temporal patterns, small enough to train quickly on a single GPU. Deeper models (ResNet-scale) would be overkill for 8,732 training clips and 10 classes.
+Total parameters: ~390K. Trained for 30 epochs with Adam + cosine annealing (starting at 1e-3). Training took 96.6 seconds on a Colab A100. Best validation accuracy: 80.51% at epoch 24.
 
 ### Study-Friendliness Scoring
 
@@ -220,7 +173,7 @@ Then I ran proper 10-fold cross-validation following the UrbanSound8K protocol:
 | Random Forest | 67.36% ± 4.49% |
 | SVM (RBF, C=10) | 68.24% ± 5.54% |
 
-The CV scores are lower than the single-split scores because some folds are genuinely harder — fold 3 drops to 60% for RF. This is expected and shows why single-split evaluation can be misleading. The fold-to-fold variance (±4–5%) reflects real difficulty variation in the data.
+CV scores are lower than the single-split scores because some folds are genuinely harder — fold 3 drops to 60% for RF. The ±4–5% variance reflects real difficulty variation in the data.
 
 ### CNN Results
 
@@ -232,9 +185,7 @@ The CNN was trained on the same fold 1–8 / fold 9 / fold 10 split:
 | Best Validation Accuracy | 80.51% (epoch 24) |
 | Training Time | 96.6 seconds (30 epochs, A100) |
 
-That's a +10.4 percentage point improvement over SVM on the same test fold — a 14.3% relative error reduction. This aligns with Piczak (2015) and Salamon & Bello (2017), who showed CNNs on mel-spectrograms consistently outperform MFCC+SVM pipelines.
-
-I didn't run full 10-fold CV for the CNN (it would take ~15 minutes on A100 and require retraining 10 models). The single-fold result is what I'm reporting — it's comparable to the single-fold baseline numbers (72.64% RF, 73.00% SVM), not the CV averages.
+That's +10.4 percentage points over SVM on the same test fold — a 14.3% relative error reduction, consistent with Piczak (2015) and Salamon & Bello (2017). I didn't run full 10-fold CV for the CNN (would take ~15 minutes and 10 retrainings), so the 83.39% should be compared to the single-fold baselines (72.64%, 73.00%), not the CV averages.
 
 ### Summary Comparison
 
@@ -246,25 +197,15 @@ I didn't run full 10-fold CV for the CNN (it would take ~15 minutes on A100 and 
 
 ### Per-Class Performance (CNN)
 
-The CNN confusion matrix (notebook 03, cell 16) reveals which sounds are easy vs. hard:
+Per-class F1 scores reveal which sounds are easy vs. hard:
 
-**Easiest** (distinctive spectral signatures):
-- Gun shot: F1 = 0.98 — sudden broadband burst, nothing else sounds like it
-- Engine idling: F1 = 0.92 — steady low-frequency hum
-- Jackhammer: F1 = 0.91 — periodic impact pattern
-- Car horn: F1 = 0.87 — short tonal burst at specific frequencies
+**Easiest**: Gun shot (0.98), Engine idling (0.92), Jackhammer (0.91), Car horn (0.87) — all have stable, distinctive spectral signatures.
 
-**Hardest** (overlapping spectral content):
-- Dog bark: F1 = 0.77 — variable pitch, confuses with children playing
-- Air conditioner: F1 = 0.78 — broad spectrum noise, varies a lot by unit
-- Siren: F1 = 0.78 — frequency sweeps can resemble street music
-- Children playing: F1 = 0.78 — mix of vocal sounds at varying pitches
-
-The confusion pattern makes intuitive sense: sounds with stable, distinctive spectral structure are easy; sounds that are variable or share spectral characteristics with other classes are hard.
+**Hardest**: Dog bark (0.77), Air conditioner (0.78), Siren (0.78), Children playing (0.78) — variable pitch or broad spectrum, often confused with each other.
 
 ### Cafe Scoring Results
 
-Applied the trained CNN to 14 cafe recordings (7 cafes × inside + outside). The "Avg Score" column is the final score after averaging inside and outside acoustic predictions, then applying the spatial adjustment (Wi-Fi bonus, eatery penalty):
+Applied the trained CNN to 14 cafe recordings (7 cafes × inside + outside). "Avg Score" is the final score after averaging inside/outside acoustic predictions and applying the spatial adjustment:
 
 | Cafe | Avg Score | Grade | Best Recording |
 |------|-----------|-------|----------------|
@@ -276,13 +217,11 @@ Applied the trained CNN to 14 cafe recordings (7 cafes × inside + outside). The
 | Starbucks | 42.42 | Fair | 46.36 (outside) |
 | Utopia Bagel | 40.56 | Fair | 46.10 (inside) |
 
-All 7 cafes scored "Fair" (35–54 range). The full range is only 7.2 points (40.56 to 47.74).
+All 7 cafes scored "Fair" — the full range is only 7.2 points (40.56–47.74).
 
 ### Inside vs. Outside Analysis
 
-The most interesting single finding: **Blank Street Cafe's inside recording scored 55.51** — the highest individual acoustic score in the dataset, and 15.2 points above its own outside recording (40.34). That inside/outside gap is the largest across all venues. It makes sense: Blank Street is a small enclosed space with soft materials that attenuate Greenwich Village street noise.
-
-Jacx & Co Food Hall, by contrast, scored almost identically inside (50.81) and outside (50.85). A food hall's open layout provides basically zero acoustic isolation.
+The most interesting finding: **Blank Street Cafe's inside recording scored 55.51** — the highest individual acoustic score, 15.2 points above its own outside recording (40.34). That gap is the largest across all venues, reflecting genuine acoustic isolation from the small enclosed space and soft materials. Jacx & Co Food Hall, by contrast, scored almost identically inside (50.81) and outside (50.85) — a food hall's open layout provides zero acoustic isolation.
 
 ## Analysis & Discussion
 
@@ -327,19 +266,13 @@ A few things I thought about while working on this:
 
 ## Limitations
 
-1. **Domain gap** — UrbanSound8K lacks cafe-specific sounds (espresso machines, cutlery, conversation). The CNN force-maps cafe audio onto intermediate classes, compressing all acoustic scores into the 40–55 range. This is the single biggest limitation.
-
-2. **All "Fair" clustering** — The 7.2-point spread (40.56–47.74) is a direct symptom of the domain gap. It doesn't mean every cafe is equally study-friendly; it means the model can't tell them apart well enough.
-
-3. **Eatery API 403** — NYC Open Data eatery endpoint returned Forbidden during inference. `eatery_count=0` for all cafes. Max impact: ~2.5 points (5% weight × 50 max penalty).
-
-4. **No CNN cross-validation** — CNN evaluated on a single held-out fold. The 83.39% number is not directly comparable to the baselines' 10-fold CV averages (67–68%). Compare it to the single-fold baseline numbers (72–73%) instead.
-
-5. **Small sample** — 7 cafes × 2 recordings is enough to demonstrate the pipeline, not enough to draw statistical conclusions about NYC cafes.
-
-6. **Subjective weights** — Distraction weights (0.10 for AC, 0.90 for car horn, etc.) are based on my judgment, not empirical measurement.
-
-7. **Temporal snapshot** — Each recording is ~2 minutes at one time of day. A cafe's acoustic profile probably varies significantly between 7am and 5pm.
+1. **Domain gap** — UrbanSound8K lacks cafe-specific sounds (espresso machines, cutlery, conversation), so the CNN force-maps cafe audio onto intermediate classes. This compresses scores into the 40–55 range and is the single biggest limitation.
+2. **All "Fair" clustering** — The 7.2-point spread is a symptom of the domain gap, not evidence that all cafes are equally study-friendly.
+3. **Eatery API 403** — `eatery_count=0` for all cafes. Max impact: ~2.5 points.
+4. **No CNN cross-validation** — Single held-out fold only. Compare 83.39% to single-fold baselines (72–73%), not CV averages.
+5. **Small sample** — 7 cafes × 2 recordings demonstrates the pipeline, not statistical generalization.
+6. **Subjective weights** — Distraction weights based on my judgment, not empirical measurement.
+7. **Temporal snapshot** — ~2 minutes per recording at one time of day; cafe soundscapes vary throughout the day.
 
 ## Future Work
 
@@ -363,7 +296,7 @@ I set out to quantify how study-friendly NYC cafes are using sound classificatio
 
 The practical results were humbling. All 7 cafes scored "Fair," with barely any spread between them. That outcome taught me more than a clean gradient of scores would have — it exposed the domain gap between training data (general urban sounds) and deployment data (cafe-specific ambiences), which is one of the most common failure modes in applied ML.
 
-If I were advising someone studying in NYC cafes based only on my data: Blank Street's inside space is genuinely quieter than the others (55.51 score, well above the pack). But honestly, for the rest, you'd be better off just checking if there's construction on the block that day.
+If I were advising someone studying in NYC cafes based on my data: Blank Street's inside space is genuinely quieter (55.51 score). For the rest, honestly, just check if there's construction on the block that day.
 
 ## References
 
