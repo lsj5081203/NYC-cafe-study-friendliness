@@ -58,6 +58,9 @@ Could I have done manual labeling instead? Sure — listen to each recording, no
 
 8,732 clips across 10 classes (air conditioner, car horn, children playing, dog bark, drilling, engine idling, gun shot, jackhammer, siren, street music), pre-split into 10 folds. Most classes have ~1,000 clips; car horn (429) and gun shot (374) are smaller. The fold structure keeps clips from the same original recording together to prevent data leakage — I followed this protocol strictly. The mild imbalance didn't hurt performance: car horn and gun shot ended up among the easiest classes due to their distinctive spectral signatures.
 
+![UrbanSound8K class distribution: ~1,000 clips per class with car horn and gun shot smaller.](figures/class_distribution.png)
+*Figure 1: UrbanSound8K class distribution. Most classes have around 1,000 clips; car horn (429) and gun shot (374) are smaller but remain easy to classify due to distinctive spectral signatures.*
+
 ### NYC Cafe Recordings
 
 I recorded 7 cafes across Greenwich Village, West Village, and Long Island City: Blank Street, Jacx & Co Food Hall, Rosecrans, Joe Coffee, Paris Baguette, Starbucks, Utopia Bagel. Selection criteria: (1) enough seating to actually study, and (2) 4+ stars on Google Maps. At each cafe I recorded ~2 minutes of audio both inside and outside using my phone (14 recordings total). The inside/outside split lets me assess both the seated environment and how well the walls isolate you from street noise.
@@ -175,6 +178,9 @@ Then I ran proper 10-fold cross-validation following the UrbanSound8K protocol:
 
 CV scores are lower than the single-split scores because some folds are genuinely harder — fold 3 drops to 60% for RF. The ±4–5% variance reflects real difficulty variation in the data.
 
+![Side-by-side confusion matrices for Random Forest and SVM on fold 10.](figures/baseline_confusion_matrices.png)
+*Figure 2: Baseline confusion matrices on fold 10. Both models confuse the variable-pitch classes (dog bark, children playing, street music) most often, while distinctive transient classes like gun shot and jackhammer are mostly clean.*
+
 ### CNN Results
 
 The CNN was trained on the same fold 1–8 / fold 9 / fold 10 split:
@@ -186,6 +192,9 @@ The CNN was trained on the same fold 1–8 / fold 9 / fold 10 split:
 | Training Time | 96.6 seconds (30 epochs, A100) |
 
 That's +10.4 percentage points over SVM on the same test fold — a 14.3% relative error reduction, consistent with Piczak (2015) and Salamon & Bello (2017). I didn't run full 10-fold CV for the CNN (would take ~15 minutes and 10 retrainings), so the 83.39% should be compared to the single-fold baselines (72.64%, 73.00%), not the CV averages.
+
+![CNN training curves for loss and accuracy across 30 epochs.](figures/cnn_training_curves.png)
+*Figure 3: CNN training curves over 30 epochs. Validation accuracy plateaus near 80% around epoch 20, and the small gap between train and validation curves suggests the model isn't significantly overfitting.*
 
 ### Summary Comparison
 
@@ -203,6 +212,9 @@ Per-class F1 scores reveal which sounds are easy vs. hard:
 
 **Hardest**: Dog bark (0.77), Air conditioner (0.78), Siren (0.78), Children playing (0.78) — variable pitch or broad spectrum, often confused with each other.
 
+![CNN confusion matrix on fold 10 with 83.39% test accuracy.](figures/cnn_confusion_matrix.png)
+*Figure 4: CNN confusion matrix on the test fold. Gun shot, engine idling, and jackhammer are nearly perfect; the bulk of remaining errors cluster among spectrally similar classes (dog bark, air conditioner, children playing, siren).*
+
 ### Cafe Scoring Results
 
 Applied the trained CNN to 14 cafe recordings (7 cafes × inside + outside). "Avg Score" is the final score after averaging inside/outside acoustic predictions and applying the spatial adjustment:
@@ -219,9 +231,15 @@ Applied the trained CNN to 14 cafe recordings (7 cafes × inside + outside). "Av
 
 All 7 cafes scored "Fair" — the full range is only 7.2 points (40.56–47.74).
 
+![Horizontal bar chart of cafe study-friendliness scores, all in the Fair range.](figures/cafe_scores_bar.png)
+*Figure 5: Final study-friendliness scores for the 7 NYC cafes. Every cafe lands in "Fair" within a 7.2-point band — a direct symptom of the domain gap between UrbanSound8K's training categories and actual cafe acoustics.*
+
 ### Inside vs. Outside Analysis
 
 The most interesting finding: **Blank Street Cafe's inside recording scored 55.51** — the highest individual acoustic score, 15.2 points above its own outside recording (40.34). That gap is the largest across all venues, reflecting genuine acoustic isolation from the small enclosed space and soft materials. Jacx & Co Food Hall, by contrast, scored almost identically inside (50.81) and outside (50.85) — a food hall's open layout provides zero acoustic isolation.
+
+![Stacked bar chart of predicted sound class distribution per cafe, comparing inside and outside.](figures/class_distribution_per_cafe.png)
+*Figure 6: Predicted sound class distribution per cafe (left bar = inside, right bar = outside). Most predictions land on mid-distraction classes like street music and children playing — the CNN's best guess when it encounters cafe sounds it wasn't trained to recognize.*
 
 ## Analysis & Discussion
 
