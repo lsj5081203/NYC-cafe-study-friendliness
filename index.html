@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Silence in the City</title>
+  <style>
+    :root {
+      --ink: #171717;
+      --muted: #5e5a52;
+      --rule: #d9d3c8;
+      --paper: #fbfaf7;
+      --accent: #0f6a6d;
+      --soft: #eef3f1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.65;
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    header {
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 34px;
+      padding-bottom: 26px;
+    }
+    h1 {
+      font-size: 44px;
+      line-height: 1.05;
+      margin: 0 0 12px;
+      letter-spacing: 0;
+    }
+    .byline, .repo {
+      color: var(--muted);
+      font-size: 16px;
+      margin: 6px 0;
+    }
+    h2 {
+      font-size: 26px;
+      line-height: 1.2;
+      margin: 36px 0 12px;
+      border-top: 1px solid var(--rule);
+      padding-top: 24px;
+    }
+    h3 {
+      font-size: 20px;
+      margin: 24px 0 8px;
+    }
+    p { margin: 0 0 16px; }
+    a { color: var(--accent); }
+    figure {
+      margin: 26px 0;
+      padding: 12px;
+      background: white;
+      border: 1px solid var(--rule);
+    }
+    figure img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+    }
+    figcaption {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      margin-top: 10px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 18px 0 24px;
+      font-size: 15px;
+      background: white;
+    }
+    th, td {
+      border-bottom: 1px solid var(--rule);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--soft); }
+    pre {
+      overflow-x: auto;
+      background: #f1eee8;
+      border: 1px solid var(--rule);
+      padding: 14px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    ol, ul { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    @media (max-width: 640px) {
+      main { padding: 32px 16px 56px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 23px; }
+      table { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Silence in the City: NYC Cafe Study-Friendliness from Sound</h1>
+    <p class="byline">Jun Lee — ML Class Project</p>
+    <p class="repo">Code and notebooks: <a href="https://github.com/lsj5081203/NYC-cafe-study-friendliness">github.com/lsj5081203/NYC-cafe-study-friendliness</a></p>
+  </header>
+
+  <h2>Introduction</h2>
+  <p>I study in cafes a lot, partly because my apartment is not always the easiest place to focus. The problem is that cafe reviews rarely tell me what I actually want to know. Google Maps covers coffee, seating, and ratings. It usually cannot tell me whether the sound in the room is the kind of background noise I can work through.</p>
+  <p>That is the detail I kept noticing. A steady air conditioner and a sudden car horn can have the same average decibel level, but they do not feel the same when I am trying to read or code. One fades into the room. The other interrupts me.</p>
+  <p>For this project I treated each cafe recording as a sequence of four-second sound snapshots. I trained an urban sound classifier on UrbanSound8K, ran it on my own recordings from seven NYC cafes, and converted the predicted classes into a study-friendliness score. I also added nearby public Wi-Fi as a positive signal and nearby eateries as a rough proxy for foot traffic.</p>
+  <p>The result was not the quiet-to-loud ranking I expected. All seven cafes landed in the "Fair" band, between 40.56 and 47.74 out of 100. That was frustrating at first, but it became the main lesson: a model trained on general urban sounds does not really know what to do with cafe ambience.</p>
+
+  <h2>Background &amp; Related Work</h2>
+  <h3>Urban Sound Classification</h3>
+  <p>The main training dataset is UrbanSound8K, introduced by Salamon, Jacoby, and Bello in 2014. It contains 8,732 labeled clips across ten urban sound categories, from air conditioners and car horns to sirens and street music. The dataset is split into ten folds so that clips from the same original recording stay together. That fold structure matters because random splits can leak very similar sounds across train and test sets.</p>
+  <p>The original UrbanSound8K paper reported competitive baselines using hand-crafted audio features such as MFCCs. Piczak (2015) later showed that convolutional neural networks on spectrogram-like representations could improve environmental sound classification. Salamon and Bello (2017) pushed the idea further with data augmentation, including pitch shifting, time stretching, and background mixing.</p>
+  <p>For this project, the useful takeaway was the move from hand-designed summaries of sound toward learned time-frequency patterns. MFCCs compress an audio clip into features that describe its spectral shape. Mel-spectrograms keep more of the time structure, which makes them a better input for a CNN.</p>
+  <h3>Spatial Urban Data</h3>
+  <p>The other ingredient was not audio at all. NYC Open Data publishes datasets such as public Wi-Fi hotspot locations and food establishment directories. These are not sound measurements, but they help describe the area around a cafe. Nearby public Wi-Fi may be convenient for studying. Many nearby eateries may mean a busier, noisier block.</p>
+  <h3>SONYC-UST-V2</h3>
+  <p>I also looked at SONYC-UST-V2, a dataset of real NYC urban recordings from acoustic sensors. It has 18,510 recordings and a richer sound taxonomy than UrbanSound8K. I did not use it for training in the final pipeline because its labels and setup are different, but it is probably the more natural next dataset for this problem.</p>
+  <h3>Gap in Prior Work</h3>
+  <p>The closest prior work is environmental sound classification and urban acoustic sensing. I did not find a project that turns cafe recordings plus urban context into a study-friendliness score. My contribution is not a new architecture; it is the application: using sound class predictions to ask a student-centered question about everyday places.</p>
+
+  <h2>Why Machine Learning?</h2>
+  <p>The obvious shortcut is to measure loudness. That would be easier, and in some ways more honest. But loudness alone misses the part of the problem I care about.</p>
+  <p>Imagine two cafes with the same average volume. One has a low HVAC hum and occasional quiet conversation. The other has delivery trucks, horns, and a dog barking outside. A decibel meter can treat those as similar. A classifier can at least try to separate steady background sound from sharp interruptions.</p>
+  <p>I used ML for one narrow reason: it let me ask "what kind of sound is this?" rather than only "how loud is this?" The final score still needs caution because the model was trained on the wrong sound vocabulary for cafes. Without classification, the project would have collapsed into a simpler noise meter.</p>
+
+  <h2>Data</h2>
+  <h3>UrbanSound8K</h3>
+  <p>UrbanSound8K has 8,732 clips. Most classes have about 1,000 examples, while car horn and gun shot are smaller. I used the official folds: folds 1-8 for training, fold 9 for validation, and fold 10 for the main test result. I also ran 10-fold cross-validation for the baseline models.</p>
+  <figure>
+    <img src="docs/figures/class_distribution.png" alt="UrbanSound8K class distribution">
+    <figcaption>Figure 1: UrbanSound8K class distribution. Most classes are close to balanced; car horn and gun shot are smaller but still distinctive.</figcaption>
+  </figure>
+  <h3>NYC Cafe Recordings</h3>
+  <p>I recorded seven cafes in Greenwich Village, the West Village, and Long Island City: Blank Street Cafe, Jacx &amp; Co Food Hall, Rosecrans Cafe, Joe Coffee, Paris Baguette, Starbucks, and Utopia Bagel. I chose places that looked plausible for studying: seating, decent reviews, and locations I could visit.</p>
+  <p>For each cafe I recorded about two minutes inside and two minutes outside on my phone, for 14 recordings total. The split mattered because a cafe can be calm once you sit down even if the block outside is loud.</p>
+  <h3>Spatial Data</h3>
+  <p>I counted NYC public Wi-Fi hotspots within 200 meters of each cafe. Joe Coffee had the most nearby hotspots (6), followed by Rosecrans (5), Blank Street (4), Paris Baguette (3), Jacx &amp; Co (2), Starbucks (2), and Utopia Bagel (1).</p>
+  <p>I also planned to count nearby eateries, but the NYC Open Data eatery endpoint returned HTTP 403 during inference. I left <code>eatery_count=0</code> for all cafes and treated that as a limitation. Since the eatery term has a 5% weight, the missing data changes the absolute scores modestly, but it still weakens the spatial part of the project.</p>
+
+  <h2>Methods</h2>
+  <h3>Feature Extraction</h3>
+  <p>For the Random Forest and SVM baselines, I represented each clip with 240 MFCC features: 40 coefficients, their deltas, their delta-deltas, and the mean and standard deviation of each over time.</p>
+  <p>For the CNN, I used 128-bin log-mel spectrograms. A 4-second clip at 22,050 Hz becomes a 128 by 173 image-like array. The vertical axis roughly corresponds to frequency, the horizontal axis to time, and the pixel values to energy.</p>
+  <h3>Baseline Classifiers</h3>
+  <p>The baselines were a Random Forest with 200 trees and an RBF-kernel SVM with <code>C=10</code>. The SVM used a standard scaler. The Random Forest did not need scaling.</p>
+  <h3>CNN Architecture</h3>
+  <p>The CNN has four convolutional blocks with 32, 64, 128, and 256 channels. Each block uses a 3 by 3 convolution, batch normalization, ReLU, and max pooling. After the convolutional stack, the model uses adaptive average pooling, dropout, and a final linear layer from 256 features to the 10 UrbanSound8K classes.</p>
+  <p>The model has about 390K parameters. I trained it for 30 epochs on a Colab A100 with Adam and cosine annealing. Best validation accuracy was 80.51% at epoch 24.</p>
+  <h3>Study-Friendliness Scoring</h3>
+  <p>For each 4-second window in a cafe recording, the CNN predicts one UrbanSound8K class. I count those classes and convert the mix into a distraction score. Steady sounds get low weights: air conditioner is 0.10 and engine idling is 0.15. Sudden or harsh sounds get high weights: siren is 0.85, car horn is 0.90, drilling and jackhammer are 0.95, and gun shot is 1.00.</p>
+  <p>The acoustic score is:</p>
+  <pre>acoustic_score = (1 - weighted_distraction) x 100</pre>
+  <p>Then I add the spatial terms:</p>
+  <pre>final_score = 0.9 x acoustic_score
+            + 0.1 x min(wifi_count / 10, 1.0) x 100
+            - 0.05 x min(eatery_count / 50, 1.0) x 100</pre>
+  <p>The acoustic part dominates because the project is mainly about sound. The weights are subjective. I chose them based on what usually breaks my concentration, not from a survey.</p>
+
+  <h2>Experiments &amp; Results</h2>
+  <h3>Baseline Accuracy on UrbanSound8K</h3>
+  <p>On the single fold-10 test split, the Random Forest reached 72.64% accuracy and the SVM reached 73.00%. In 10-fold cross-validation, the scores were lower: 67.36% +/- 4.49% for Random Forest and 68.24% +/- 5.54% for SVM. The difference matters because some folds are harder than others.</p>
+  <figure>
+    <img src="docs/figures/baseline_confusion_matrices.png" alt="Baseline confusion matrices">
+    <figcaption>Figure 2: Baseline confusion matrices on fold 10. The variable classes are harder; the sharper transient sounds are cleaner.</figcaption>
+  </figure>
+  <h3>CNN Results</h3>
+  <p>The CNN reached 83.39% test accuracy on fold 10. That is about 10.4 percentage points better than the SVM on the same split. I did not run 10-fold cross-validation for the CNN, so the fair comparison is against the single-split baseline results, not the baseline CV averages.</p>
+  <figure>
+    <img src="docs/figures/cnn_training_curves.png" alt="CNN training curves">
+    <figcaption>Figure 3: CNN training curves. Validation accuracy levels off around 80%, and the train/validation gap stays fairly small.</figcaption>
+  </figure>
+  <h3>Summary Comparison</h3>
+  <table>
+    <thead><tr><th>Model</th><th>Features</th><th>Single Split</th><th>10-Fold CV</th></tr></thead>
+    <tbody>
+      <tr><td>Random Forest</td><td>MFCC (240-dim)</td><td>72.64%</td><td>67.36% +/- 4.49%</td></tr>
+      <tr><td>SVM (RBF, C=10)</td><td>MFCC (240-dim)</td><td>73.00%</td><td>68.24% +/- 5.54%</td></tr>
+      <tr><td>CNN (4-block)</td><td>Mel-spectrogram</td><td>83.39%</td><td>not run</td></tr>
+    </tbody>
+  </table>
+  <h3>Per-Class Performance (CNN)</h3>
+  <p>The easiest classes were gun shot, engine idling, jackhammer, and car horn. The hardest were dog bark, air conditioner, siren, and children playing. Some sound events have recognizable shapes, while others vary a lot from clip to clip.</p>
+  <figure>
+    <img src="docs/figures/cnn_confusion_matrix.png" alt="CNN confusion matrix">
+    <figcaption>Figure 4: CNN confusion matrix on the test fold. Most remaining errors are between classes with overlapping spectra or variable timing.</figcaption>
+  </figure>
+  <h3>Cafe Scoring Results</h3>
+  <p>When I applied the CNN to my cafe recordings, every cafe landed in the "Fair" range.</p>
+  <table>
+    <thead><tr><th>Cafe</th><th>Avg Score</th><th>Grade</th><th>Best Recording</th></tr></thead>
+    <tbody>
+      <tr><td>Jacx &amp; Co Food Hall</td><td>47.74</td><td>Fair</td><td>50.85 outside</td></tr>
+      <tr><td>Blank Street Cafe</td><td>47.14</td><td>Fair</td><td>55.51 inside</td></tr>
+      <tr><td>Rosecrans Cafe</td><td>44.95</td><td>Fair</td><td>46.23 outside</td></tr>
+      <tr><td>Joe Coffee</td><td>42.60</td><td>Fair</td><td>41.33 inside</td></tr>
+      <tr><td>Paris Baguette</td><td>42.42</td><td>Fair</td><td>47.97 inside</td></tr>
+      <tr><td>Starbucks</td><td>42.42</td><td>Fair</td><td>46.36 outside</td></tr>
+      <tr><td>Utopia Bagel</td><td>40.56</td><td>Fair</td><td>46.10 inside</td></tr>
+    </tbody>
+  </table>
+  <figure>
+    <img src="docs/figures/cafe_scores_bar.png" alt="Cafe scores bar chart">
+    <figcaption>Figure 5: Final cafe scores. The spread is only 7.2 points, which is too narrow for a useful recommendation system.</figcaption>
+  </figure>
+  <h3>Inside vs. Outside Analysis</h3>
+  <p>The most interesting individual result was Blank Street Cafe. Its inside recording scored 55.51, while its outside recording scored 40.34. That 15-point gap suggests the model did pick up something real about acoustic isolation. Jacx &amp; Co, a food hall, had almost no inside/outside difference.</p>
+  <figure>
+    <img src="docs/figures/class_distribution_per_cafe.png" alt="Predicted class distribution per cafe">
+    <figcaption>Figure 6: Predicted class distribution for cafe recordings. Many windows are forced into mid-distraction UrbanSound8K classes because the model has no cafe-specific labels.</figcaption>
+  </figure>
+
+  <h2>Analysis &amp; Discussion</h2>
+  <h3>What Worked</h3>
+  <p>The audio classifier did what it was trained to do on UrbanSound8K. The CNN improved over the MFCC baselines, and the confusion matrices gave interpretable errors. The scoring pipeline was also easy to audit: each recording can be traced from windows, to class predictions, to an acoustic score, to a final score.</p>
+  <p>The inside/outside comparison also kept the project from being only a model leaderboard. Even with a limited model, Blank Street's indoor recording separated from its outdoor recording in a way that matched my own impression of the place.</p>
+  <h3>What Didn't Work</h3>
+  <p>The final cafe ranking was weaker than I hoped. Seven cafes within 7.2 points is too compressed to guide a real decision. The missing eatery data also meant the spatial penalty was effectively off.</p>
+  <p>Most importantly, UrbanSound8K does not contain cafe sounds. There is no class for espresso machines, dishes, overlapping conversation, cash registers, or quiet background music. When the model hears those sounds, it still has to choose among siren, street music, children playing, and the other UrbanSound8K classes. That forced-choice setup pushes cafe recordings toward the middle of the scale.</p>
+  <h3>The Domain Gap Problem</h3>
+  <p>This is the main result. The classifier can do urban sound classification, but that does not mean it understands cafe ambience. The training task and the deployment task are close enough to seem reasonable, but far enough apart to break the score.</p>
+  <p>This was the applied ML trap I had read about but not really seen in my own work. The benchmark accuracy looked fine, but the target environment had different categories. In my case, the failure was visible because all the cafe scores collapsed into the same band.</p>
+
+  <h2>Ethical Considerations</h2>
+  <p>The main ethical issue is recording in public and semi-public spaces. Even though I did not transcribe speech or analyze content, raw audio can still contain fragments of conversations. A real version should process audio locally and store only class probabilities or summary scores.</p>
+  <p>There is also a fairness problem in the score itself. My distraction weights reflect my preferences. Other students may experience sound differently. A single score could also affect small businesses for reasons outside their control, like nearby construction or traffic. Any public-facing version should explain what the score measures and allow personalization.</p>
+
+  <h2>Limitations</h2>
+  <ol>
+    <li><strong>Domain gap</strong> — UrbanSound8K lacks cafe-specific classes, so cafe sounds are forced into the wrong vocabulary.</li>
+    <li><strong>All "Fair" clustering</strong> — The narrow score range is a model limitation, not proof that the cafes are equivalent.</li>
+    <li><strong>Eatery API 403</strong> — The eatery penalty was not applied because the endpoint failed.</li>
+    <li><strong>No CNN cross-validation</strong> — The CNN result is one held-out fold, not a full CV estimate.</li>
+    <li><strong>Small sample</strong> — Seven cafes and one visit per setting are enough for a prototype, not a city-wide conclusion.</li>
+    <li><strong>Subjective weights</strong> — The distraction weights need calibration from actual users.</li>
+    <li><strong>Temporal snapshot</strong> — Cafe sound changes by time of day, day of week, and nearby street activity.</li>
+  </ol>
+
+  <h2>Future Work</h2>
+  <p>With three more months, I would start by collecting a small cafe-specific labeled dataset. Even a few hundred 4-second clips labeled as conversation, espresso machine, dishes, background music, traffic bleed, and quiet room tone would help more than adding complexity to the current model.</p>
+  <p>I would also fix the spatial data, record each cafe at several times of day, and let users adjust the distraction weights. After that, SONYC-UST-V2 would be useful for learning NYC-specific background sound patterns before fine-tuning on cafe recordings.</p>
+
+  <h2>Conclusion</h2>
+  <p>I set out to rank NYC cafes by study-friendliness using sound classification. The classifier performed well on its benchmark, and the pipeline produced scores, figures, and reproducible notebooks. But the recommendation result was weak because the model did not have the right vocabulary for the environment.</p>
+  <p>That makes the project less of a finished cafe-ranking tool and more of a case study in mismatch. The technical pipeline worked; the deployment assumption did not. I do not see that as a total failure, but I would not ship the score as a recommendation app.</p>
+  <p>If I had to choose from the seven cafes based only on this experiment, I would trust the Blank Street inside recording the most. For everything else, I would treat the scores as a warning about domain mismatch, not as a guide to where to study.</p>
+
+  <h2>References</h2>
+  <ol>
+    <li>Salamon, J., Jacoby, C., &amp; Bello, J. P. (2014). A Dataset and Taxonomy for Urban Sound Research. <em>Proceedings of the 22nd ACM International Conference on Multimedia</em>.</li>
+    <li>Piczak, K. J. (2015). Environmental Sound Classification with Convolutional Neural Networks. <em>IEEE International Workshop on Machine Learning for Signal Processing</em>.</li>
+    <li>Salamon, J., &amp; Bello, J. P. (2017). Deep Convolutional Neural Networks and Data Augmentation for Environmental Sound Classification. <em>IEEE Signal Processing Letters</em>, 24(3), 279-283.</li>
+    <li>Cartwright, M., et al. (2020). SONYC Urban Sound Tagging (SONYC-UST): A Multilabel Dataset from an Urban Acoustic Sensor Network. <em>Proceedings of the Detection and Classification of Acoustic Scenes and Events Workshop (DCASE)</em>.</li>
+  </ol>
+</main>
+</body>
+</html>

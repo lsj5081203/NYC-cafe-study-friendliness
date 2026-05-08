@@ -85,6 +85,8 @@ conda activate cafe-study
 
 Download UrbanSound8K from https://urbansounddataset.weebly.com/urbansound8k.html and extract to `data/UrbanSound8K/`. See `data/README.md` for details.
 
+This repository includes cafe metadata and executed notebooks, but not the large raw audio files or trained model checkpoints. To rerun inference from scratch, add the `.m4a` cafe recordings listed in `data/cafe_recordings/cafe_metadata.csv` and provide a trained sklearn `.pkl` or CNN `.pt` checkpoint.
+
 ### Reproduce via Notebooks
 
 Walk through the project in order:
@@ -96,15 +98,22 @@ jupyter notebook notebooks/03_cnn_model.ipynb           # train CNN
 jupyter notebook notebooks/04_cafe_scoring.ipynb        # score the cafes
 ```
 
+The notebooks already contain the outputs used in the blog post. They were run in Colab with Google Drive paths, so local reruns may require updating the project path cells.
+
 ### Reproduce via CLI
 
 ```bash
-python scripts/run_inference.py
+python scripts/run_inference.py \
+  --model data/models/rf_model.pkl \
+  --recordings data/cafe_recordings \
+  --metadata data/cafe_recordings/cafe_metadata.csv \
+  --output data/results/cafe_scores.csv
 ```
 
 ### Run Tests
 
 ```bash
+conda activate cafe-study
 pytest tests/ -v
 ```
 
@@ -130,6 +139,7 @@ pytest tests/ -v
 ├── docs/
 │   ├── blog.md                            # Technical blog post with full analysis
 │   ├── FAQ.md                             # Frequently asked questions
+│   ├── figures/                           # Extracted notebook figures for blog/html
 │   ├── PROJECT_TEMPLATE.md                # Project scope and plan
 │   └── WORKFLOW.md                        # Development workflow notes
 ├── notebooks/
@@ -139,6 +149,7 @@ pytest tests/ -v
 │   └── 04_cafe_scoring.ipynb              # Cafe scoring with CNN + spatial data
 ├── scripts/
 │   ├── download_data.sh                   # Data download helper
+│   ├── extract_notebook_figures.py         # Extracts saved notebook output PNGs
 │   ├── insert_analysis_cells.py           # Inject analysis cells into notebooks
 │   └── run_inference.py                   # CLI inference pipeline
 ├── src/

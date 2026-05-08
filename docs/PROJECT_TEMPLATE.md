@@ -43,7 +43,7 @@
 ## 5) Proposed Method
 
 - **What we implemented**: CNN on mel-spectrograms (UrbanSoundCNN: 4 conv blocks, 390K params) with 30 epochs of training using Adam optimizer and cosine annealing learning rate schedule.
-- **Results**: CNN achieves 83.39% test accuracy, a +10.4pp improvement over baseline SVM (73.00%). This exceeds state-of-the-art benchmarks from Piczak (2015) and Salamon & Bello (2017), both ~79%.
+- **Results**: CNN achieves 83.39% test accuracy on the fold-10 split, a +10.4pp improvement over baseline SVM (73.00%) on the same split. This is competitive with prior CNN work from Piczak (2015) and Salamon & Bello (2017).
 - **Why it helps**: CNNs learn hierarchical spectro-temporal patterns that hand-crafted MFCCs cannot capture. Per-class analysis shows easy classes (gun_shot F1=0.98) vs. hard classes (air_conditioner F1=0.77).
 - **Future work**: Spatial context fusion (Wi-Fi/eatery features to final layer). Audio augmentation during training.
 - **Ablations**: (1) CNN without spatial features vs. with spatial features. (2) Different numbers of mel bands. (3) Effect of audio augmentation (time shift, pitch shift, noise injection).

@@ -152,7 +152,7 @@ The CNN achieves +10.4 percentage points better accuracy than SVM/RF. For consum
 
 ### Q: What's the actual accuracy on UrbanSound8K?
 
-**A:** Measured test accuracies using 10-fold CV:
+**A:** Measured test accuracies on the default fold-10 test split:
 
 | Model | Test Accuracy |
 |-------|--------------|
@@ -160,7 +160,7 @@ The CNN achieves +10.4 percentage points better accuracy than SVM/RF. For consum
 | SVM (MFCC) | 73.00% |
 | CNN (mel-spectrograms) | **83.39%** |
 
-The CNN significantly outperforms the hand-crafted feature baselines. For comparison, Salamon et al. (2014) reported MFCC + GMM-SVM: 68.5%, and prior CNN work (Piczak 2015, Salamon & Bello 2017) achieved ~79% on UrbanSound8K. Our implementation achieves state-of-the-art results.
+The CNN outperforms the hand-crafted feature baselines on this split. For comparison, Salamon et al. (2014) reported MFCC + GMM-SVM around 68.5%, and prior CNN work (Piczak 2015, Salamon & Bello 2017) reported results around the high 70s on UrbanSound8K. This result is competitive, but it is not a full 10-fold CNN evaluation.
 
 ---
 
@@ -284,8 +284,8 @@ To understand the acoustic score alone, look at column `acoustic_score` (ignorin
 
 Example:
 ```
-2-minute recording → 14 windows (4s each, 50% overlap)
-                  → 14 class predictions
+2-minute recording → about 59 windows (4s each, 50% overlap)
+                  → about 59 class predictions
                   → 1 acoustic score
                   → 1 final score
 ```
@@ -554,7 +554,7 @@ The A100 is strongly recommended for practical training. Model size: 390K parame
 - **Interactive map visualization** — Folium or Mapbox frontend
 - **Outlier detection** — flag cafes with unexpected scores
 
-The CNN baseline is complete and production-ready. See `docs/WORKFLOW.md` for more details and `docs/PROJECT_TEMPLATE.md` for the full project scope.
+The CNN baseline is complete for this class project, with the main caveat that it is still trained on UrbanSound8K rather than cafe-specific sounds. See `docs/WORKFLOW.md` for more details and `docs/PROJECT_TEMPLATE.md` for the full project scope.
 
 ---
 
@@ -570,7 +570,6 @@ The CNN baseline is complete and production-ready. See `docs/WORKFLOW.md` for mo
 | `docs/PROJECT_TEMPLATE.md` | Original project scope and plan |
 | `docs/blog.md` | Technical blog post on the approach |
 | `data/README.md` | Dataset download & format details |
-| `CLAUDE.md` | Architecture & code guidance for AI assistants |
 
 ---
 

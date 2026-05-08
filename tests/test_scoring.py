@@ -55,15 +55,17 @@ class TestComputeStudyFriendliness:
         # 10 hotspots → wifi_bonus = 100, 0.9*80 + 0.1*100 = 82.0
         assert compute_study_friendliness(80, 10, 0) == pytest.approx(82.0)
 
-    def test_eatery_penalty(self):
+    def test_eatery_penalty_raw_count(self):
         # 50 eateries → eatery_penalty = 100, 0.9*80 - 0.05*100 = 67.0
         assert compute_study_friendliness(80, 0, 50) == pytest.approx(67.0)
-        """WIFI_SATURATION_COUNT hotspots → full bonus (+10 points at default weight)."""
+
+    def test_wifi_bonus_saturation_constant(self):
+        """WIFI_SATURATION_COUNT hotspots gives the full bonus."""
         score = compute_study_friendliness(80, wifi_count=WIFI_SATURATION_COUNT, eatery_count=0)
         assert score == pytest.approx(82.0)
 
-    def test_eatery_penalty(self):
-        """EATERY_SATURATION_COUNT eateries → full penalty (-5 points at default weight)."""
+    def test_eatery_penalty_saturation_constant(self):
+        """EATERY_SATURATION_COUNT eateries gives the full penalty."""
         score = compute_study_friendliness(80, wifi_count=0, eatery_count=EATERY_SATURATION_COUNT)
         assert score == pytest.approx(67.0)
 

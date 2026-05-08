@@ -118,9 +118,9 @@ fold_accs, mean_acc = run_kfold_cv("data/UrbanSound8K", model_type="rf")
 # Runtime: ~30 minutes on CPU (3 min × 10 folds)
 ```
 
-**Actual results (10-fold CV):**
-- Random Forest: 72.64% accuracy
-- SVM with RBF kernel: 73.00% accuracy
+**Actual results:**
+- Single split, fold 10: Random Forest 72.64%, SVM with RBF kernel 73.00%
+- Full 10-fold CV: Random Forest 67.36% +/- 4.49%, SVM with RBF kernel 68.24% +/- 5.54%
 
 Both significantly outperform the literature baselines. RF is faster and scale-invariant.
 
@@ -147,8 +147,8 @@ This notebook:
 - Prepares mel-spectrogram data (UrbanSound8K)
 - Defines UrbanSoundCNN architecture (4 conv blocks, 390K params)
 - Trains with Adam + cosine annealing LR schedule
-- Evaluates 10-fold CV performance (best: 80.51% val accuracy at epoch 24)
-- Saves trained model to `data/models/cnn_model.pth`
+- Evaluates the held-out fold-10 test split (best validation accuracy: 80.51% at epoch 24)
+- Saves a trained checkpoint for later cafe scoring
 
 Runtime on Colab A100 GPU: ~97 seconds. Consumer GPUs (RTX 3060): 5-15 minutes.
 

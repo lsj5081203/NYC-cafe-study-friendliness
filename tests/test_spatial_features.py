@@ -1,1 +1,101 @@
-"""Unit tests for src/spatial_features.py \u2014 no API calls required."""\n\nimport numpy as np\nimport pandas as pd\nimport pytest\nfrom src.spatial_features import haversine_distance, compute_density, build_spatial_features\n\n\nclass TestHaversineDistance:\n    def test_same_point_is_zero(self):\n        d = haversine_distance(40.7128, -74.0060, 40.7128, -74.0060)\n        assert d == pytest.approx(0.0, abs=0.1)\n\n    def test_known_nyc_distance(self):\n        # Times Square (40.7580, -73.9855) to Central Park South (40.7648, -73.9738)\n        # Approx 1.1 km\n        d = haversine_distance(40.7580, -73.9855, 40.7648, -73.9738)\n        assert 900 < d < 1300  # roughly 1.1 km\n\n    def test_symmetry(self):\n        d1 = haversine_distance(40.7128, -74.0060, 40.7580, -73.9855)\n        d2 = haversine_distance(40.7580, -73.9855, 40.7128, -74.0060)\n        assert d1 == pytest.approx(d2)\n\n    def test_large_distance(self):\n        # NYC to LA is roughly 3,940 km\n        d = haversine_distance(40.7128, -74.0060, 34.0522, -118.2437)\n        assert 3_900_000 < d < 4_000_000\n\n\nclass TestComputeDensity:\n    @pytest.fixture\n    def locations_df(self):\n        return pd.DataFrame({\n            "latitude": [40.7128, 40.7130, 40.7200, 40.8000],\n            "longitude": [-74.0060, -74.0062, -74.0100, -74.0500],\n        })\n\n    def test_count_within_radius(self, locations_df):\n        # First two points are very close (~25m), third is ~800m away, fourth is far\n        count = compute_density(40.7128, -74.0060, locations_df, radius_m=200)\n        assert count == 2\n\n    def test_large_radius_captures_all(self, locations_df):\n        count = compute_density(40.7128, -74.0060, locations_df, radius_m=50_000)\n        assert count == 4\n\n    def test_zero_radius(self, locations_df):\n        count = compute_density(40.7128, -74.0060, locations_df, radius_m=0)\n        # Only exact match (floating point equality)\n        assert count >= 0\n\n\nclass TestBuildSpatialFeatures:\n    def test_output_columns(self):\n        cafes = pd.DataFrame({\n            "name": ["Cafe A"],\n            "latitude": [40.7128],\n            "longitude": [-74.0060],\n        })\n        wifi = pd.DataFrame({\n            "latitude": [40.7130],\n            "longitude": [-74.0062],\n        })\n        eateries = pd.DataFrame({\n            "latitude": [40.7129],\n            "longitude": [-74.0061],\n        })\n        result = build_spatial_features(cafes, wifi, eateries, radius_m=200)\n        assert list(result.columns) == ["name", "latitude", "longitude", "wifi_count", "eatery_count"]\n        assert len(result) == 1\n\n    def test_multiple_cafes(self):\n        cafes = pd.DataFrame({\n            "name": ["Cafe A", "Cafe B"],\n            "latitude": [40.7128, 40.8000],\n            "longitude": [-74.0060, -74.0500],\n        })\n        wifi = pd.DataFrame({\n            "latitude": [40.7130],\n            "longitude": [-74.0062],\n        })\n        eateries = pd.DataFrame({\n            "latitude": [40.7129],\n            "longitude": [-74.0061],\n        })\n        result = build_spatial_features(cafes, wifi, eateries, radius_m=200)\n        assert len(result) == 2\n        # Cafe A is near the wifi/eatery, Cafe B is far\n        assert result.iloc[0]["wifi_count"] >= 1\n        assert result.iloc[1]["wifi_count"] == 0\n\n    def test_eateries_without_lat_lon(self):\n        cafes = pd.DataFrame({\n            "name": ["Cafe A"],\n            "latitude": [40.7128],\n            "longitude": [-74.0060],\n        })\n        wifi = pd.DataFrame({\n            "latitude": [40.7130],\n            "longitude": [-74.0062],\n        })\n        eateries = pd.DataFrame({\n            "some_col": ["value"],\n        })\n        result = build_spatial_features(cafes, wifi, eateries, radius_m=200)\n        assert result.iloc[0]["eatery_count"] == 0\n
+"""Unit tests for src/spatial_features.py; no API calls required."""
+
+import pandas as pd
+import pytest
+
+from src.spatial_features import build_spatial_features, compute_density, haversine_distance
+
+
+class TestHaversineDistance:
+    def test_same_point_is_zero(self):
+        d = haversine_distance(40.7128, -74.0060, 40.7128, -74.0060)
+        assert d == pytest.approx(0.0, abs=0.1)
+
+    def test_known_nyc_distance(self):
+        d = haversine_distance(40.7580, -73.9855, 40.7648, -73.9738)
+        assert 900 < d < 1300
+
+    def test_symmetry(self):
+        d1 = haversine_distance(40.7128, -74.0060, 40.7580, -73.9855)
+        d2 = haversine_distance(40.7580, -73.9855, 40.7128, -74.0060)
+        assert d1 == pytest.approx(d2)
+
+    def test_large_distance(self):
+        d = haversine_distance(40.7128, -74.0060, 34.0522, -118.2437)
+        assert 3_900_000 < d < 4_000_000
+
+
+class TestComputeDensity:
+    @pytest.fixture
+    def locations_df(self):
+        return pd.DataFrame({
+            "latitude": [40.7128, 40.7130, 40.7200, 40.8000],
+            "longitude": [-74.0060, -74.0062, -74.0100, -74.0500],
+        })
+
+    def test_count_within_radius(self, locations_df):
+        count = compute_density(40.7128, -74.0060, locations_df, radius_m=200)
+        assert count == 2
+
+    def test_large_radius_captures_all(self, locations_df):
+        count = compute_density(40.7128, -74.0060, locations_df, radius_m=50_000)
+        assert count == 4
+
+    def test_zero_radius(self, locations_df):
+        count = compute_density(40.7128, -74.0060, locations_df, radius_m=0)
+        assert count >= 0
+
+
+class TestBuildSpatialFeatures:
+    def test_output_columns(self):
+        cafes = pd.DataFrame({
+            "name": ["Cafe A"],
+            "latitude": [40.7128],
+            "longitude": [-74.0060],
+        })
+        wifi = pd.DataFrame({
+            "latitude": [40.7130],
+            "longitude": [-74.0062],
+        })
+        eateries = pd.DataFrame({
+            "latitude": [40.7129],
+            "longitude": [-74.0061],
+        })
+        result = build_spatial_features(cafes, wifi, eateries, radius_m=200)
+        assert list(result.columns) == [
+            "name", "latitude", "longitude", "wifi_count", "eatery_count"
+        ]
+        assert len(result) == 1
+
+    def test_multiple_cafes(self):
+        cafes = pd.DataFrame({
+            "name": ["Cafe A", "Cafe B"],
+            "latitude": [40.7128, 40.8000],
+            "longitude": [-74.0060, -74.0500],
+        })
+        wifi = pd.DataFrame({
+            "latitude": [40.7130],
+            "longitude": [-74.0062],
+        })
+        eateries = pd.DataFrame({
+            "latitude": [40.7129],
+            "longitude": [-74.0061],
+        })
+        result = build_spatial_features(cafes, wifi, eateries, radius_m=200)
+        assert len(result) == 2
+        assert result.iloc[0]["wifi_count"] >= 1
+        assert result.iloc[1]["wifi_count"] == 0
+
+    def test_eateries_without_lat_lon(self):
+        cafes = pd.DataFrame({
+            "name": ["Cafe A"],
+            "latitude": [40.7128],
+            "longitude": [-74.0060],
+        })
+        wifi = pd.DataFrame({
+            "latitude": [40.7130],
+            "longitude": [-74.0062],
+        })
+        eateries = pd.DataFrame({"some_col": ["value"]})
+        result = build_spatial_features(cafes, wifi, eateries, radius_m=200)
+        assert result.iloc[0]["eatery_count"] == 0

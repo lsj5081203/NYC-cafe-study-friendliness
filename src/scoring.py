@@ -9,6 +9,10 @@ study-friendliness score for each cafe.
 import numpy as np
 
 
+WIFI_SATURATION_COUNT = 10
+EATERY_SATURATION_COUNT = 50
+
+
 # Distraction weights for each UrbanSound8K class (0 = not distracting, 1 = very distracting)
 DISTRACTION_WEIGHTS = {
     0: 0.1,   # air_conditioner — steady hum, barely noticeable
@@ -81,10 +85,9 @@ def compute_study_friendliness(
     Returns:
         Final study-friendliness score (0-100).
     """
-    # Note: weights sum to 0.95; max achievable score is ~95 (capped at 100 by clamp)
-    # Normalize spatial features (rough normalization for NYC)
-    wifi_bonus = min(wifi_count / 10.0, 1.0) * 100  # cap at 10 hotspots nearby
-    eatery_penalty = min(eatery_count / 50.0, 1.0) * 100  # cap at 50 eateries
+    # Normalize spatial features with simple saturation points for NYC context.
+    wifi_bonus = min(wifi_count / WIFI_SATURATION_COUNT, 1.0) * 100
+    eatery_penalty = min(eatery_count / EATERY_SATURATION_COUNT, 1.0) * 100
 
     score = (
         acoustic_weight * acoustic_score
