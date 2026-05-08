@@ -40,3 +40,6 @@ Thumbs.db
 # Logs
 wandb/
 *.log
+
+# Generated figures (regenerate with scripts/extract_notebook_figures.py)
+docs/figures/
